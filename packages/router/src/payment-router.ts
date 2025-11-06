@@ -1,4 +1,5 @@
-import { Connection, Keypair, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, sendAndConfirmTransaction } from '@solana/web3.js';
+import { getOrCreateKeypair } from './wallet-utils.js';
 
 interface PaymentRequest {
   from: string;
@@ -7,6 +8,7 @@ interface PaymentRequest {
   currency: 'USDC' | 'SOL';
   serviceId: string;
   metadata?: any;
+  fromKeypair?: Keypair; // For actual signing
 }
 
 interface PaymentResponse {
@@ -18,6 +20,8 @@ interface PaymentResponse {
   from?: string;
   to?: string;
   serviceId?: string;
+  signature?: string; // Actual Solana signature
+  explorerUrl?: string;
 }
 
 export class PaymentRouter {
@@ -25,10 +29,13 @@ export class PaymentRouter {
   private connection: Connection;
   private totalProcessed: number = 0;
   private totalVolume: number = 0;
+  private wallets: Map<string, Keypair> = new Map();
+  private useRealTransactions: boolean;
 
-  constructor() {
+  constructor(useRealTransactions: boolean = false) {
     // Connect to Solana devnet
     this.connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    this.useRealTransactions = useRealTransactions;
   }
 
   async processPayment(request: PaymentRequest): Promise<PaymentResponse> {
@@ -48,19 +55,25 @@ export class PaymentRouter {
     this.payments.set(transactionId, payment);
 
     try {
-      // Simulate payment processing with x402
-      // In production, this would:
-      // 1. Verify HTTP 402 Payment Required header
-      // 2. Process USDC/SOL transfer on Solana
-      // 3. Return payment proof
-      
-      await this.simulateBlockchainTransaction(request);
+      if (this.useRealTransactions) {
+        // REAL Solana transaction
+        const signature = await this.executeRealBlockchainTransaction(request);
+        payment.signature = signature;
+        payment.explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+      } else {
+        // Simulated for demo (faster)
+        await this.simulateBlockchainTransaction(request);
+      }
       
       payment.status = 'completed';
       this.totalProcessed++;
       this.totalVolume += request.amount;
       
       console.log(`💰 Payment processed: ${request.amount} ${request.currency} from ${this.truncateAddress(request.from)} to ${this.truncateAddress(request.to)} for ${request.serviceId}`);
+      if (payment.signature) {
+        console.log(`   📝 Signature: ${payment.signature}`);
+        console.log(`   🔍 Explorer: ${payment.explorerUrl}`);
+      }
     } catch (error) {
       payment.status = 'failed';
       console.error('Payment failed:', error);
@@ -68,6 +81,42 @@ export class PaymentRouter {
 
     this.payments.set(transactionId, payment);
     return payment;
+  }
+
+  async executeRealBlockchainTransaction(request: PaymentRequest): Promise<string> {
+    try {
+      // Get or create keypairs for wallets
+      const fromKeypair = request.fromKeypair || await getOrCreateKeypair(request.from);
+      const toPubkey = new PublicKey(request.to);
+      
+      // Convert amount to lamports (1 SOL = 1e9 lamports)
+      // For micro-payments, we'll use a small amount
+      const lamports = Math.floor(request.amount * LAMPORTS_PER_SOL);
+      
+      // Create transaction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: fromKeypair.publicKey,
+          toPubkey,
+          lamports,
+        })
+      );
+      
+      // Send and confirm transaction
+      const signature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [fromKeypair],
+        {
+          commitment: 'confirmed',
+        }
+      );
+      
+      return signature;
+    } catch (error: any) {
+      console.error('Blockchain transaction failed:', error);
+      throw new Error(`Solana transaction failed: ${error.message}`);
+    }
   }
 
   async splitPayment(

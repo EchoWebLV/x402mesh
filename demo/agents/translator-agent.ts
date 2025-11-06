@@ -43,12 +43,41 @@ class TranslatorAgent extends Agent {
       console.log(`\n🌍 Translator Agent received request:`);
       console.log(`   Capability: ${capability}`);
       console.log(`   Input: ${JSON.stringify(input)}`);
-      if (payment) {
-        console.log(`   Payment: ${payment.amount} ${payment.currency} (${payment.transactionId})`);
+      
+      // x402 Protocol: Check payment
+      if (!payment || payment.status !== 'completed') {
+        // Return HTTP 402 Payment Required
+        const requiredCapability = this.metadata.capabilities.find(c => c.name === capability);
+        const requiredAmount = requiredCapability?.pricing.amount || 0.01;
+        
+        res.status(402).set({
+          'X-Payment-Required': 'true',
+          'X-Payment-Amount': requiredAmount.toString(),
+          'X-Payment-Currency': 'USDC',
+          'X-Payment-Address': this.metadata.walletAddress,
+          'X-Service-Id': capability,
+        }).json({ 
+          error: 'Payment Required',
+          paymentRequired: true,
+          amount: requiredAmount,
+          currency: 'USDC',
+          walletAddress: this.metadata.walletAddress,
+        });
+        return;
       }
+      
+      console.log(`   ✅ Payment verified: ${payment.amount} ${payment.currency} (${payment.transactionId})`);
 
       try {
         const result = await this.execute(capability, input);
+        
+        // Add x402 success headers
+        res.set({
+          'X-Payment-Received': 'true',
+          'X-Payment-Status': payment.status,
+          'X-Transaction-Id': payment.transactionId,
+        });
+        
         res.json({ success: true, data: result, payment });
       } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });

@@ -8,10 +8,12 @@
   ],
   "scripts": {
     "setup": "npm install && npm run build",
+    "setup:wallets": "npx tsx scripts/setup-wallets.ts",
     "build": "npm run build --workspaces",
     "dev": "concurrently \"npm run dev -w @a2a/registry\" \"npm run dev -w @a2a/router\"",
     "demo": "node demo/run-demo.js",
     "demo:chain": "node demo/chain-demo.js",
+    "demo:real": "REAL_TRANSACTIONS=true node demo/chain-demo.js",
     "verify": "node verify-setup.js",
     "test": "echo \"Tests coming soon\" && exit 0",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist"

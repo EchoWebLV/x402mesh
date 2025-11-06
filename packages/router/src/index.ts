@@ -5,9 +5,17 @@ import { PaymentRouter } from './payment-router.js';
 import axios from 'axios';
 
 const app = express();
-const router = new PaymentRouter();
+// Enable real Solana transactions with REAL_TRANSACTIONS=true environment variable
+const useRealTransactions = process.env.REAL_TRANSACTIONS === 'true';
+const router = new PaymentRouter(useRealTransactions);
 const PORT = process.env.ROUTER_PORT || 3002;
 const REGISTRY_URL = process.env.REGISTRY_URL || 'http://localhost:3001';
+
+if (useRealTransactions) {
+  console.log('⚡ REAL SOLANA TRANSACTIONS ENABLED - Using devnet');
+} else {
+  console.log('🎭 Demo mode - Using simulated transactions (set REAL_TRANSACTIONS=true for real Solana)');
+}
 
 app.use(cors());
 app.use(express.json());
@@ -18,13 +26,28 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', service: 'payment-router' });
 });
 
-// Process a payment
+// Process a payment with x402 headers
 app.post('/payments/process', async (req, res) => {
   try {
     const result = await router.processPayment(req.body);
+    
+    // x402 Payment Required headers
+    res.setHeader('X-Payment-Required', 'true');
+    res.setHeader('X-Payment-Status', result.status);
+    res.setHeader('X-Payment-Amount', result.amount.toString());
+    res.setHeader('X-Payment-Currency', result.currency);
+    if (result.signature) {
+      res.setHeader('X-Solana-Signature', result.signature);
+      res.setHeader('X-Explorer-Url', result.explorerUrl || '');
+    }
+    
     res.json(result);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    // Return 402 Payment Required on failure
+    res.status(402).json({ 
+      error: error.message,
+      paymentRequired: true 
+    });
   }
 });
 
