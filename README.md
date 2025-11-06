@@ -11,20 +11,6 @@ The Agent-to-Agent Payment Router is the **"npm for AI agents"** - a comprehensi
 - 🔗 **Agent Chaining**: Orchestrate complex workflows across multiple agents
 - 💸 **Payment Splits**: Distribute payments across agent chains automatically
 
-## ⚡ Real Implementation (Not a Simulation!)
-
-This project includes **ACTUAL working implementations**:
-
-✅ **Real Solana Transactions**: Uses Solana System Program for on-chain transfers  
-✅ **HTTP 402 Protocol**: All agents return proper x402 Payment Required headers  
-✅ **Devnet Deployed**: Every transaction verifiable on Solana Explorer  
-✅ **Wallet Management**: Automated keypair generation and devnet funding  
-✅ **Transaction Signatures**: Real on-chain proof for every payment  
-
-**Not mock APIs. Not simulated payments. Real blockchain integration.**
-
-See [Solana Integration Guide](./docs/SOLANA_INTEGRATION.md) for details.
-
 ## 🏆 Hackathon Tracks
 
 This project targets multiple tracks:
@@ -59,7 +45,7 @@ npm run build
 
 ### Run the Demo
 
-**Option 1: Demo Mode** (Fast, simulated transactions)
+**Option 1: Interactive Chain Demo** (Recommended)
 ```bash
 npm run demo:chain
 ```
@@ -70,23 +56,7 @@ This runs a beautiful real-time demo showing:
 - Agent chaining (Translate → Summarize → Analyze)
 - Live transaction tracking
 
-**Option 2: REAL Solana Transactions** ⚡ NEW!
-```bash
-# Setup wallets and fund them on devnet
-npm run setup:wallets
-
-# Run with REAL on-chain transactions
-npm run demo:real
-```
-
-This mode:
-- ✅ Creates **REAL transactions** on Solana devnet
-- ✅ Returns actual transaction signatures
-- ✅ Verifiable on [Solana Explorer](https://explorer.solana.com/?cluster=devnet)
-- ✅ Implements **x402 HTTP Payment Required** protocol
-- ✅ Shows transaction explorer links
-
-**Option 3: Full Demo**
+**Option 2: Full Demo**
 ```bash
 npm run demo
 ```
