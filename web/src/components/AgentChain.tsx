@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWallet } from '@solana/wallet-adapter-react'
 import axios from 'axios'
+import { sendSOLPayment, sendUSDCPayment } from '@/lib/solana'
 
 const scenarios = [
   {
@@ -18,14 +19,73 @@ const scenarios = [
     text: 'This product is absolutely amazing! The user interface is intuitive and the performance is excellent.',
     language: 'french',
   },
+  {
+    id: 3,
+    title: 'Market Analysis',
+    text: 'The cryptocurrency market shows volatile behavior. Decentralized finance platforms are gaining significant traction.',
+    language: 'german',
+  },
 ]
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'
+const REGISTRY_BASE = process.env.NEXT_PUBLIC_REGISTRY_URL || 'http://localhost:3001'
+const USE_REAL_PAYMENTS = process.env.NEXT_PUBLIC_REAL_PAYMENTS === 'true'
+
 export function AgentChain() {
-  const { connected, publicKey } = useWallet()
+  const wallet = useWallet()
+  const { connected, publicKey } = wallet
   const [isRunning, setIsRunning] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [results, setResults] = useState<any>(null)
   const [selectedScenario, setSelectedScenario] = useState(scenarios[0])
+  const [agents, setAgents] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking')
+  const [balance, setBalance] = useState<number>(0)
+
+  // Check backend status on mount
+  useEffect(() => {
+    checkBackendStatus()
+  }, [])
+
+  // Check wallet balance
+  useEffect(() => {
+    if (connected && publicKey) {
+      checkBalance()
+    }
+  }, [connected, publicKey])
+
+  const checkBalance = async () => {
+    if (!publicKey) return
+    try {
+      const { getBalance } = await import('@/lib/solana')
+      const bal = await getBalance(publicKey)
+      setBalance(bal)
+    } catch (err) {
+      console.error('Failed to get balance:', err)
+    }
+  }
+
+  const checkBackendStatus = async () => {
+    try {
+      await axios.get(`${API_BASE}/health`, { timeout: 3000 })
+      await axios.get(`${REGISTRY_BASE}/health`, { timeout: 3000 })
+      setBackendStatus('online')
+      loadAgents()
+    } catch (err) {
+      setBackendStatus('offline')
+      console.error('Backend services not running:', err)
+    }
+  }
+
+  const loadAgents = async () => {
+    try {
+      const response = await axios.get(`${REGISTRY_BASE}/agents`)
+      setAgents(response.data)
+    } catch (err) {
+      console.error('Failed to load agents:', err)
+    }
+  }
 
   const executeChain = async () => {
     if (!connected) {
@@ -33,51 +93,132 @@ export function AgentChain() {
       return
     }
 
+    if (backendStatus === 'offline') {
+      alert('Backend services are not running. Please start them with: npm run dev')
+      return
+    }
+
     setIsRunning(true)
     setCurrentStep(0)
     setResults(null)
+    setError(null)
 
     try {
-      // Step 1: Translation
-      setCurrentStep(1)
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Step 2: Summarization
-      setCurrentStep(2)
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Step 3: Analysis
-      setCurrentStep(3)
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Get agent IDs
+      const translator = agents.find(a => a.name === 'Translator Agent')
+      const summarizer = agents.find(a => a.name === 'Summarizer Agent')
+      const analyzer = agents.find(a => a.name === 'Analyzer Agent')
 
-      // Mock results for demo
-      setResults({
-        translation: {
-          text: selectedScenario.text,
-          language: selectedScenario.language,
+      if (!translator || !summarizer || !analyzer) {
+        throw new Error('Required agents not found. Please ensure all agents are running.')
+      }
+
+      // Execute real chain via backend
+      setCurrentStep(1)
+      const chainPayload = [
+        {
+          agentId: translator.id,
+          capability: 'translate',
+          input: {
+            text: selectedScenario.text,
+            targetLanguage: selectedScenario.language,
+          },
         },
-        summary: [
-          'AI is revolutionizing blockchain',
-          'Payment systems are more efficient',
-          'Security improvements are notable',
-        ],
-        sentiment: {
-          score: 0.85,
-          label: 'POSITIVE',
-          confidence: 0.92,
+        {
+          agentId: summarizer.id,
+          capability: 'summarize',
+          input: {},
         },
-        payments: [
-          { agent: 'Translator', amount: 0.01, signature: '5xT...9mK' },
-          { agent: 'Summarizer', amount: 0.02, signature: '7pQ...3xR' },
-          { agent: 'Analyzer', amount: 0.015, signature: '2wE...8nP' },
-        ],
-        totalCost: 0.045,
+        {
+          agentId: analyzer.id,
+          capability: 'analyze_sentiment',
+          input: {},
+        },
+      ]
+
+      let signatures: string[] | undefined
+
+      if (USE_REAL_PAYMENTS) {
+        if (!publicKey) {
+          throw new Error('Wallet not connected')
+        }
+
+        signatures = []
+
+        for (let i = 0; i < chainPayload.length; i++) {
+          const step = chainPayload[i]
+          const agentMeta = [translator, summarizer, analyzer][i]
+          const capability = agentMeta?.capabilities.find((c: any) => c.name === step.capability)
+
+          if (!capability) {
+            throw new Error(`Pricing not found for capability ${step.capability}`)
+          }
+
+          const amount = capability.pricing.amount
+          const currency = capability.pricing.currency
+
+          try {
+            if (currency === 'SOL') {
+              const signature = await sendSOLPayment(wallet, agentMeta.walletAddress, amount)
+              signatures.push(signature)
+            } else if (currency === 'USDC') {
+              const signature = await sendUSDCPayment(wallet, agentMeta.walletAddress, amount)
+              signatures.push(signature)
+            } else {
+              throw new Error(`Unsupported currency ${currency}`)
+            }
+          } catch (paymentError: any) {
+            throw new Error(`Payment for ${agentMeta.name} failed: ${paymentError.message || paymentError}`)
+          }
+        }
+      }
+
+      const chainResponse = await axios.post(`${API_BASE}/payments/chain`, {
+        paymentSource: publicKey?.toBase58() || 'UserWallet000',
+        chain: chainPayload,
+        signatures,
       })
 
+      setCurrentStep(2)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setCurrentStep(3)
+      await new Promise(resolve => setTimeout(resolve, 500))
       setCurrentStep(4)
-    } catch (error) {
+
+      // Process real results
+      const [translationResult, summaryResult, analysisResult] = chainResponse.data.results
+
+      setResults({
+        translation: translationResult,
+        summary: summaryResult.summary,
+        summaryDetails: {
+          wordCount: summaryResult.wordCount,
+          compressionRatio: summaryResult.compressionRatio,
+        },
+        sentiment: {
+          score: analysisResult.score,
+          label: analysisResult.sentiment,
+          insights: analysisResult.insights,
+        },
+        payments: chainResponse.data.payments.map((p: any, idx: number) => ({
+          agent: ['Translator', 'Summarizer', 'Analyzer'][idx],
+          amount: p.amount,
+          signature: p.signature || p.transactionId.substring(0, 8) + '...' + p.transactionId.substring(p.transactionId.length - 4),
+          transactionId: p.transactionId,
+          explorerUrl: p.explorerUrl,
+        })),
+        totalCost: chainResponse.data.totalCost,
+        executionTime: chainResponse.data.executionTime,
+      })
+
+      if (USE_REAL_PAYMENTS) {
+        await checkBalance()
+      }
+
+    } catch (error: any) {
       console.error('Chain execution failed:', error)
-      alert('Failed to execute chain')
+      setError(error.response?.data?.error || error.message || 'Failed to execute chain')
+      alert(`Error: ${error.response?.data?.error || error.message}`)
     } finally {
       setIsRunning(false)
     }
@@ -85,10 +226,38 @@ export function AgentChain() {
 
   return (
     <div className="space-y-6">
+      {/* Backend Status */}
+      {backendStatus === 'offline' && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
+          <span className="text-2xl">⚠️</span>
+          <div>
+            <h4 className="font-bold text-red-400">Backend Services Offline</h4>
+            <p className="text-sm text-gray-400">
+              Run <code className="bg-gray-800 px-2 py-1 rounded">npm run dev</code> in a separate terminal to start the backend services.
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {backendStatus === 'online' && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-center gap-3">
+          <span className="text-green-400 text-xl">✓</span>
+          <div className="text-sm flex-1">
+            <span className="text-green-400 font-semibold">Backend Online</span>
+            <span className="text-gray-400 ml-2">• {agents.length} agents registered</span>
+          </div>
+          {connected && (
+            <div className="text-sm text-gray-400">
+              Balance: <span className="text-primary font-semibold">{balance.toFixed(4)} SOL</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Scenario Selection */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
         <h3 className="text-lg font-bold mb-4">Select Scenario</h3>
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           {scenarios.map((scenario) => (
             <button
               key={scenario.id}
@@ -101,7 +270,8 @@ export function AgentChain() {
               } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <h4 className="font-bold mb-2">{scenario.title}</h4>
-              <p className="text-sm text-gray-400">{scenario.text.substring(0, 80)}...</p>
+              <p className="text-sm text-gray-400">{scenario.text.substring(0, 60)}...</p>
+              <p className="text-xs text-primary mt-2">→ {scenario.language}</p>
             </button>
           ))}
         </div>
@@ -111,14 +281,17 @@ export function AgentChain() {
       <div className="text-center">
         <button
           onClick={executeChain}
-          disabled={isRunning || !connected}
+          disabled={isRunning || !connected || backendStatus !== 'online'}
           className={`px-8 py-4 rounded-xl font-bold text-lg transition-all ${
-            isRunning || !connected
+            isRunning || !connected || backendStatus !== 'online'
               ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-primary to-secondary text-dark hover:scale-105 shadow-lg hover:shadow-primary/50'
           }`}
         >
-          {isRunning ? '⏳ Executing Chain...' : connected ? '🚀 Execute Agent Chain' : '🔒 Connect Wallet First'}
+          {isRunning ? '⏳ Executing Chain...' : 
+           !connected ? '🔒 Connect Wallet First' :
+           backendStatus !== 'online' ? '⚠️ Backend Offline' :
+           '🚀 Execute Agent Chain'}
         </button>
       </div>
 
@@ -192,6 +365,14 @@ export function AgentChain() {
             </h3>
 
             <div className="space-y-4">
+              {/* Translation */}
+              <div>
+                <h4 className="font-semibold text-gray-300 mb-2">🌍 Translation ({results.translation.language}):</h4>
+                <p className="text-gray-400 bg-gray-800/50 rounded-lg p-3">
+                  {results.translation.translatedText}
+                </p>
+              </div>
+
               {/* Summary */}
               <div>
                 <h4 className="font-semibold text-gray-300 mb-2">📝 Summary:</h4>
@@ -200,20 +381,36 @@ export function AgentChain() {
                     <li key={i}>{point}</li>
                   ))}
                 </ul>
+                {results.summaryDetails && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    {results.summaryDetails.wordCount} words • {results.summaryDetails.compressionRatio} compression
+                  </p>
+                )}
               </div>
 
               {/* Sentiment */}
               <div>
-                <h4 className="font-semibold text-gray-300 mb-2">🔍 Sentiment:</h4>
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                    results.sentiment.label === 'POSITIVE' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    {results.sentiment.label}
-                  </span>
-                  <span className="text-gray-400 text-sm">
-                    Score: {results.sentiment.score} (Confidence: {(results.sentiment.confidence * 100).toFixed(0)}%)
-                  </span>
+                <h4 className="font-semibold text-gray-300 mb-2">🔍 Sentiment Analysis:</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                      results.sentiment.label === 'POSITIVE' ? 'bg-green-500/20 text-green-400' : 
+                      results.sentiment.label === 'NEGATIVE' ? 'bg-red-500/20 text-red-400' :
+                      'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {results.sentiment.label}
+                    </span>
+                    <span className="text-gray-400 text-sm">
+                      Score: {results.sentiment.score.toFixed(2)}
+                    </span>
+                  </div>
+                  {results.sentiment.insights && results.sentiment.insights.length > 0 && (
+                    <ul className="text-sm text-gray-400 space-y-1">
+                      {results.sentiment.insights.map((insight: string, i: number) => (
+                        <li key={i}>• {insight}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
 
@@ -225,14 +422,31 @@ export function AgentChain() {
                     <div key={i} className="flex items-center justify-between bg-gray-800/50 rounded-lg p-3">
                       <span className="text-gray-300">{payment.agent}</span>
                       <div className="text-right">
-                        <div className="text-primary font-semibold">${payment.amount} USDC</div>
-                        <div className="text-xs text-gray-500">Tx: {payment.signature}</div>
+                        <div className="text-primary font-semibold">${payment.amount.toFixed(4)} USDC</div>
+                        <div className="text-xs text-gray-500">
+                          Tx: {payment.signature}
+                          {payment.explorerUrl && (
+                            <a 
+                              href={payment.explorerUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="ml-2 text-primary hover:underline"
+                            >
+                              ↗
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
                   <div className="flex items-center justify-between bg-primary/10 rounded-lg p-3 border border-primary/30">
-                    <span className="font-bold">Total Cost</span>
-                    <span className="text-xl font-bold text-primary">${results.totalCost} USDC</span>
+                    <div>
+                      <span className="font-bold">Total Cost</span>
+                      {results.executionTime && (
+                        <span className="text-xs text-gray-400 ml-2">• {results.executionTime}ms</span>
+                      )}
+                    </div>
+                    <span className="text-xl font-bold text-primary">${results.totalCost.toFixed(4)} USDC</span>
                   </div>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import axios from 'axios'
 
 interface Payment {
   id: string
@@ -11,7 +12,11 @@ interface Payment {
   status: string
   timestamp: string
   signature?: string
+  explorerUrl?: string
+  transactionId: string
 }
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'
 
 export function PaymentTracker() {
   const [payments, setPayments] = useState<Payment[]>([])
@@ -20,66 +25,87 @@ export function PaymentTracker() {
     successful: 0,
     volume: 0,
   })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Mock payment data
-    const mockPayments: Payment[] = [
-      {
-        id: 'tx-1',
-        from: '7xK9q...2Bn3',
-        to: 'Trans...r123',
-        amount: 0.01,
-        status: 'completed',
-        timestamp: new Date().toISOString(),
-        signature: '5xT...9mK',
-      },
-      {
-        id: 'tx-2',
-        from: '7xK9q...2Bn3',
-        to: 'Summ...r456',
-        amount: 0.02,
-        status: 'completed',
-        timestamp: new Date().toISOString(),
-        signature: '7pQ...3xR',
-      },
-      {
-        id: 'tx-3',
-        from: '7xK9q...2Bn3',
-        to: 'Analy...r789',
-        amount: 0.015,
-        status: 'completed',
-        timestamp: new Date().toISOString(),
-        signature: '2wE...8nP',
-      },
-    ]
-
-    setPayments(mockPayments)
-    setStats({
-      total: mockPayments.length,
-      successful: mockPayments.filter(p => p.status === 'completed').length,
-      volume: mockPayments.reduce((sum, p) => sum + p.amount, 0),
-    })
+    loadPayments()
+    // Refresh every 5 seconds
+    const interval = setInterval(loadPayments, 5000)
+    return () => clearInterval(interval)
   }, [])
+
+  const loadPayments = async () => {
+    try {
+      const [historyResponse, statsResponse] = await Promise.all([
+        axios.get(`${API_BASE}/payments/history`),
+        axios.get(`${API_BASE}/stats`),
+      ])
+
+      const paymentHistory = historyResponse.data.map((p: any) => ({
+        id: p.transactionId,
+        transactionId: p.transactionId,
+        from: p.from ? truncateAddress(p.from) : 'Unknown',
+        to: p.to ? truncateAddress(p.to) : 'Unknown',
+        amount: p.amount,
+        status: p.status,
+        timestamp: p.timestamp,
+        signature: p.signature,
+        explorerUrl: p.explorerUrl,
+      }))
+
+      setPayments(paymentHistory)
+      setStats({
+        total: statsResponse.data.totalProcessed,
+        successful: statsResponse.data.successful,
+        volume: statsResponse.data.totalVolume,
+      })
+      setError(null)
+    } catch (err: any) {
+      console.error('Failed to load payments:', err)
+      setError('Backend offline')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const truncateAddress = (address: string): string => {
+    if (address.length <= 12) return address
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
+  }
 
   return (
     <div className="space-y-6">
+      {/* Error/Loading State */}
+      {error && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-center gap-3">
+          <span className="text-xl">⚠️</span>
+          <div>
+            <h4 className="font-bold text-yellow-400">Backend Offline</h4>
+            <p className="text-sm text-gray-400">
+              Unable to fetch payment data. Start backend with: <code className="bg-gray-800 px-2 py-1 rounded">npm run dev</code>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid md:grid-cols-3 gap-4">
         <StatCard
           title="Total Payments"
-          value={stats.total.toString()}
+          value={loading ? '...' : stats.total.toString()}
           icon="📊"
           color="from-blue-500 to-cyan-500"
         />
         <StatCard
           title="Successful"
-          value={stats.successful.toString()}
+          value={loading ? '...' : stats.successful.toString()}
           icon="✓"
           color="from-green-500 to-emerald-500"
         />
         <StatCard
           title="Total Volume"
-          value={`$${stats.volume.toFixed(3)}`}
+          value={loading ? '...' : `$${stats.volume.toFixed(4)}`}
           icon="💰"
           color="from-purple-500 to-pink-500"
         />
@@ -87,20 +113,36 @@ export function PaymentTracker() {
 
       {/* Payment List */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-        <h3 className="text-lg font-bold mb-4">Recent Payments</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold">Recent Payments</h3>
+          {!loading && !error && (
+            <button 
+              onClick={loadPayments}
+              className="text-sm text-gray-400 hover:text-primary transition-colors"
+            >
+              🔄 Refresh
+            </button>
+          )}
+        </div>
         
         <div className="space-y-3">
-          {payments.length === 0 ? (
+          {loading ? (
             <div className="text-center text-gray-400 py-8">
+              <div className="animate-spin text-4xl mb-2">⏳</div>
+              Loading payments...
+            </div>
+          ) : payments.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+              <div className="text-4xl mb-2">💸</div>
               No payments yet. Execute an agent chain to see payments here!
             </div>
           ) : (
-            payments.map((payment, index) => (
+            payments.slice().reverse().map((payment, index) => (
               <motion.div
                 key={payment.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05 }}
                 className="bg-gray-900/50 rounded-lg p-4 border border-gray-700 hover:border-primary/50 transition-all"
               >
                 <div className="flex items-center justify-between mb-2">
@@ -117,28 +159,31 @@ export function PaymentTracker() {
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-primary">
-                      ${payment.amount} USDC
+                      ${payment.amount.toFixed(4)} USDC
                     </div>
                     <div className={`text-xs px-2 py-1 rounded-full inline-block ${
                       payment.status === 'completed' 
                         ? 'bg-green-500/20 text-green-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
+                        : payment.status === 'pending'
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-red-500/20 text-red-400'
                     }`}>
                       {payment.status}
                     </div>
                   </div>
                 </div>
                 
-                {payment.signature && (
+                {(payment.signature || payment.explorerUrl) && (
                   <div className="mt-2 pt-2 border-t border-gray-700">
                     <a
-                      href={`https://explorer.solana.com/tx/${payment.signature}?cluster=devnet`}
+                      href={payment.explorerUrl || `https://explorer.solana.com/tx/${payment.signature}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-gray-400 hover:text-primary transition-colors flex items-center gap-1"
                     >
                       <span>🔍</span>
-                      <span>View on Solana Explorer: {payment.signature}</span>
+                      <span>View on Solana Explorer</span>
+                      {payment.signature && <span className="text-gray-600">• {payment.signature}</span>}
                     </a>
                   </div>
                 )}

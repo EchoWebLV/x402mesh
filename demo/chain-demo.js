@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import { spawn } from 'child_process';
 import axios from 'axios';
 
@@ -53,9 +54,20 @@ async function waitForService(url, name, maxAttempts = 30) {
 }
 
 async function runChainDemo() {
+  const useRealTransactions = process.env.REAL_TRANSACTIONS === 'true';
+  
   log('\n╔═══════════════════════════════════════════════════════╗', colors.bright);
   log('║   🤖 AGENT CHAIN DEMO - Real-time Conversation      ║', colors.bright);
   log('╚═══════════════════════════════════════════════════════╝\n', colors.bright);
+  
+  if (useRealTransactions) {
+    log('🔥 REAL TRANSACTION MODE ENABLED', colors.yellow);
+    log('   Using actual Solana devnet transactions', colors.yellow);
+    log('   Transactions will be slower but verifiable on-chain\n', colors.yellow);
+  } else {
+    log('⚡ FAST MODE: Using simulated transactions', colors.cyan);
+    log('   Set REAL_TRANSACTIONS=true in .env for real blockchain\n', colors.cyan);
+  }
 
   try {
     // Start services silently

@@ -9,17 +9,25 @@
   ],
   "scripts": {
     "setup": "npm install && npm run build:core",
+    "setup:env": "bash scripts/setup-env.sh",
     "setup:wallets": "npx tsx scripts/setup-wallets.ts",
+    "setup:real": "bash scripts/setup-real-transactions.sh",
+    "fund:wallets": "bash scripts/auto-fund-wallets.sh",
+    "fund:mint": "bash scripts/fund-mint-authority.sh",
+    "check:balances": "bash scripts/check-balances.sh",
     "build": "npm run build:core && npm run web:build",
     "build:core": "npm run build -w @a2a/registry -w @a2a/router -w @a2a/sdk",
     "dev": "concurrently \"npm run dev -w @a2a/registry\" \"npm run dev -w @a2a/router\"",
+    "start:all": "bash scripts/start-all.sh",
+    "start:backend": "npm run start:all",
     "web": "cd web && npm install && npm run dev",
     "web:build": "cd web && npm install && npm run build",
     "demo": "node demo/run-demo.js",
     "demo:chain": "node demo/chain-demo.js",
-    "demo:real": "REAL_TRANSACTIONS=true node demo/chain-demo.js",
+    "demo:real": "node demo/chain-demo.js",
+    "demo:mainnet": "echo '⚠️  MAINNET USES REAL MONEY! Are you sure? (Ctrl+C to cancel)' && sleep 5 && node demo/chain-demo.js",
     "verify": "node verify-setup.js",
-    "test": "echo \"Tests coming soon\" && exit 0",
+    "test": "node -e \"console.log('✅ Manual testing recommended: npm run verify && npm run demo:chain')\"",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist web/node_modules web/.next"
   },
   "keywords": [
@@ -36,6 +44,9 @@
     "concurrently": "^8.2.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "openai": "^6.8.1"
   }
 }
-

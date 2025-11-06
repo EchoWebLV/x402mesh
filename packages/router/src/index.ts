@@ -1,8 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import { PaymentRouter } from './payment-router.js';
+import { verifyPaymentOnChain } from './signature-verifier.js';
 import axios from 'axios';
+import { Connection } from '@solana/web3.js';
 
 const app = express();
 // Enable real Solana transactions with REAL_TRANSACTIONS=true environment variable
@@ -26,7 +29,81 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', service: 'payment-router' });
 });
 
-// Process a payment with x402 headers
+// Submit a signed transaction and verify payment
+app.post('/payments/submit', async (req, res) => {
+  try {
+    const { signedTransaction, from, to, amount, currency, serviceId } = req.body;
+    
+    if (!signedTransaction) {
+      return res.status(400).json({ error: 'Signed transaction required' });
+    }
+    
+    // Submit transaction to Solana
+    const connection = new Connection(
+      process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+      'confirmed'
+    );
+    
+    const signature = await connection.sendRawTransaction(
+      Buffer.from(signedTransaction, 'base64'),
+      {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+      }
+    );
+    
+    // Wait for confirmation
+    await connection.confirmTransaction(signature, 'confirmed');
+    
+    // Verify the payment on-chain
+    const verified = await verifyPaymentOnChain({
+      signature,
+      from,
+      to,
+      amount,
+      currency,
+    });
+    
+    if (!verified) {
+      return res.status(400).json({
+        error: 'Payment verification failed - transaction does not match claimed amounts',
+        signature,
+      });
+    }
+    
+    // Create payment record
+    const payment = {
+      transactionId: signature,
+      signature,
+      status: 'completed',
+      amount,
+      currency,
+      from,
+      to,
+      serviceId,
+      timestamp: new Date().toISOString(),
+      explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
+      verified: true,
+      onChain: true,
+    };
+    
+    // x402 headers
+    res.setHeader('X-Payment-Received', 'true');
+    res.setHeader('X-Payment-Status', 'completed');
+    res.setHeader('X-Solana-Signature', signature);
+    res.setHeader('X-Explorer-Url', payment.explorerUrl);
+    
+    res.json(payment);
+  } catch (error: any) {
+    console.error('Payment submission failed:', error);
+    res.status(402).json({ 
+      error: error.message,
+      paymentRequired: true 
+    });
+  }
+});
+
+// Process a payment with x402 headers (legacy - for backward compat)
 app.post('/payments/process', async (req, res) => {
   try {
     const result = await router.processPayment(req.body);
@@ -63,14 +140,18 @@ app.get('/payments/:transactionId', (req, res) => {
 
 // Execute a chain of agent calls with automatic payment routing
 app.post('/payments/chain', async (req, res) => {
-  try {
-    const startTime = Date.now();
-    const { chain, paymentSource } = req.body;
-    
-    const results = [];
-    const payments = [];
-    let totalCost = 0;
+  const startTime = Date.now();
+  const { chain, paymentSource, signatures } = req.body;
+  const realTransactions = router.isRealTransactionsEnabled();
+  
+  const results = [];
+  const payments = [];
+  const completedPayments: any[] = [];
+  let totalCost = 0;
+  let rollbackNeeded = false;
+  const chainId = Date.now();
 
+  try {
     // Execute each agent in the chain
     for (let i = 0; i < chain.length; i++) {
       const step = chain[i];
@@ -82,7 +163,14 @@ app.post('/payments/chain', async (req, res) => {
       // Find the capability pricing
       const capability = agent.capabilities.find((c: any) => c.name === step.capability);
       if (!capability) {
+        rollbackNeeded = true;
         throw new Error(`Capability ${step.capability} not found on agent ${agent.name}`);
+      }
+
+      const signatureForStep = Array.isArray(signatures) ? signatures[i] : undefined;
+      if (realTransactions && !signatureForStep) {
+        rollbackNeeded = true;
+        throw new Error(`Transaction signature required for step ${i + 1} when REAL_TRANSACTIONS=true`);
       }
       
       // Process payment
@@ -92,13 +180,15 @@ app.post('/payments/chain', async (req, res) => {
         amount: capability.pricing.amount,
         currency: capability.pricing.currency,
         serviceId: step.capability,
-        metadata: { step: i, chain: true },
+        metadata: { step: i, chain: true, chainId },
+        transactionSignature: signatureForStep,
       });
       
       payments.push(payment);
+      completedPayments.push({ payment, agent });
       totalCost += capability.pricing.amount;
       
-      // Call the agent (simulated for demo - in production would call actual endpoint)
+      // Call the agent
       const input: any = i === 0 ? step.input : results[i - 1];
       
       try {
@@ -108,11 +198,18 @@ app.post('/payments/chain', async (req, res) => {
           payment,
         }, { timeout: 10000 });
         
+        // Check if agent returned success
+        if (!response.data.success) {
+          rollbackNeeded = true;
+          throw new Error(`Agent ${agent.name} execution failed: ${response.data.error}`);
+        }
+        
         results.push(response.data.data);
-      } catch (error) {
-        // If agent endpoint not available, simulate response
-        console.log(`Agent ${agent.name} endpoint not available, using simulated response`);
-        results.push(input);
+      } catch (error: any) {
+        // Agent execution failed - need rollback
+        rollbackNeeded = true;
+        console.error(`Agent ${agent.name} failed:`, error.message);
+        throw new Error(`Chain failed at step ${i + 1} (${agent.name}): ${error.message}`);
       }
     }
     
@@ -123,9 +220,45 @@ app.post('/payments/chain', async (req, res) => {
       totalCost,
       payments,
       executionTime,
+      status: 'success',
     });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    // Chain failed - attempt rollback
+    if (rollbackNeeded && completedPayments.length > 0) {
+      console.log(`\n⚠️  Chain failed - initiating payment rollback for ${completedPayments.length} payments...`);
+      
+      const rollbacks = [];
+      for (const { payment, agent } of completedPayments) {
+        try {
+          // In a real system, this would reverse the blockchain transaction
+          // For demo, we'll mark it as refunded
+          console.log(`   🔄 Refunding ${payment.amount} ${payment.currency} from ${agent.name}`);
+          rollbacks.push({
+            originalPayment: payment.transactionId,
+            amount: payment.amount,
+            status: 'refunded',
+            note: 'Chain execution failed',
+          });
+        } catch (rollbackError) {
+          console.error(`   ❌ Failed to rollback payment to ${agent.name}`);
+        }
+      }
+      
+      res.status(400).json({ 
+        error: error.message,
+        status: 'failed',
+        rollback: {
+          attempted: true,
+          refunds: rollbacks,
+          totalRefunded: rollbacks.reduce((sum, r) => sum + r.amount, 0),
+        },
+        partialResults: results,
+        completedSteps: results.length,
+        totalSteps: chain.length,
+      });
+    } else {
+      res.status(400).json({ error: error.message, status: 'failed' });
+    }
   }
 });
 
@@ -142,6 +275,12 @@ app.post('/payments/split', async (req, res) => {
 
 // Get payment history
 app.get('/payments', (req, res) => {
+  const history = router.getPaymentHistory();
+  res.json(history);
+});
+
+// Get payment history (alias for web UI)
+app.get('/payments/history', (req, res) => {
   const history = router.getPaymentHistory();
   res.json(history);
 });

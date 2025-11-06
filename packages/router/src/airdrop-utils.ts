@@ -57,3 +57,4 @@ export async function ensureFunded(walletName: string, minBalance: number = 0.5)
   }
 }
 
+

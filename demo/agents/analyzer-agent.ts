@@ -1,5 +1,12 @@
+import 'dotenv/config';
 import express from 'express';
 import { Agent, AgentCapability } from '../../packages/sdk/src/agent.js';
+import { Connection, PublicKey } from '@solana/web3.js';
+
+const connection = new Connection(
+  process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+  'confirmed'
+);
 
 class AnalyzerAgent extends Agent {
   private app: express.Application;
@@ -44,12 +51,11 @@ class AnalyzerAgent extends Agent {
       console.log(`   Capability: ${capability}`);
       console.log(`   Input: ${JSON.stringify(input).substring(0, 100)}...`);
       
-      // x402 Protocol: Check payment
-      if (!payment || payment.status !== 'completed') {
-        // Return HTTP 402 Payment Required
-        const requiredCapability = this.metadata.capabilities.find(c => c.name === capability);
-        const requiredAmount = requiredCapability?.pricing.amount || 0.015;
-        
+      // x402 Protocol: Verify payment (real or simulated)
+      const requiredCapability = this.metadata.capabilities.find(c => c.name === capability);
+      const requiredAmount = requiredCapability?.pricing.amount || 0.015;
+      
+      if (!payment) {
         res.status(402).set({
           'X-Payment-Required': 'true',
           'X-Payment-Amount': requiredAmount.toString(),
@@ -66,7 +72,40 @@ class AnalyzerAgent extends Agent {
         return;
       }
       
-      console.log(`   ✅ Payment verified: ${payment.amount} ${payment.currency} (${payment.transactionId})`);
+      // REAL VERIFICATION MODE: Check on blockchain
+      if (payment.onChain === true && payment.signature) {
+        try {
+          const tx = await connection.getTransaction(payment.signature, {
+            maxSupportedTransactionVersion: 0,
+          });
+          
+          if (!tx || tx.meta?.err) {
+            res.status(402).json({
+              error: 'Payment transaction not found or failed on-chain',
+              paymentRequired: true,
+            });
+            return;
+          }
+          
+          console.log(`   ✅ Payment verified on-chain: ${payment.signature.slice(0, 8)}...`);
+        } catch (error) {
+          console.error('   ❌ On-chain verification failed:', error);
+          res.status(402).json({
+            error: 'Could not verify payment on blockchain',
+            paymentRequired: true,
+          });
+          return;
+        }
+      } else if (payment.status === 'completed') {
+        // SIMULATED MODE: Accept completed status
+        console.log(`   ✅ Payment accepted (simulated): ${payment.transactionId}`);
+      } else {
+        res.status(402).json({
+          error: 'Invalid payment proof',
+          paymentRequired: true,
+        });
+        return;
+      }
 
       try {
         const result = await this.execute(capability, input);

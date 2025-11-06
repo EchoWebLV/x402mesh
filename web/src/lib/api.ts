@@ -44,6 +44,7 @@ export async function executeAgentChain(params: {
     capability: string
     input: any
   }>
+  signatures?: string[]
 }): Promise<any> {
   try {
     const response = await axios.post(`${API_BASE.router}/payments/chain`, params)

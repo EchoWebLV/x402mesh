@@ -30,6 +30,7 @@ export interface PaymentRequest {
   currency: 'USDC' | 'SOL';
   serviceId: string;
   metadata?: any;
+  transactionSignature?: string;
 }
 
 export interface PaymentResponse {
@@ -38,6 +39,11 @@ export interface PaymentResponse {
   amount: number;
   currency: string;
   timestamp: string;
+  from?: string;
+  to?: string;
+  serviceId?: string;
+  signature?: string;
+  explorerUrl?: string;
 }
 
 export interface AgentRequest {
@@ -61,6 +67,7 @@ export interface ChainedRequest {
     input: any;
   }[];
   paymentSource: string;
+  signatures?: string[];
 }
 
 export interface ChainedResponse {

@@ -1,6 +1,6 @@
-import { Connection, Keypair, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, sendAndConfirmTransaction } from '@solana/web3.js';
-import { getOrCreateKeypair } from './wallet-utils.js';
-import { transferUSDC, initializeUSDCMint } from './usdc-utils.js';
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import type { ParsedInstruction, ParsedTransactionWithMeta, PartiallyDecodedInstruction } from '@solana/web3.js';
+import { initializeUSDCMint, getUSDCMint } from './usdc-utils.js';
 
 interface PaymentRequest {
   from: string;
@@ -9,7 +9,7 @@ interface PaymentRequest {
   currency: 'USDC' | 'SOL';
   serviceId: string;
   metadata?: any;
-  fromKeypair?: Keypair; // For actual signing
+  transactionSignature?: string;
 }
 
 interface PaymentResponse {
@@ -69,8 +69,16 @@ export class PaymentRouter {
 
     try {
       if (this.useRealTransactions) {
-        // REAL Solana transaction
-        const signature = await this.executeRealBlockchainTransaction(request);
+        const signature = request.transactionSignature;
+        if (!signature) {
+          throw new Error('transactionSignature is required when REAL_TRANSACTIONS=true');
+        }
+
+        this.validateAddress(request.from, 'from');
+        this.validateAddress(request.to, 'to');
+
+        await this.verifyOnChainPayment(request, signature);
+
         payment.signature = signature;
         payment.explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
       } else {
@@ -90,50 +98,41 @@ export class PaymentRouter {
     } catch (error) {
       payment.status = 'failed';
       console.error('Payment failed:', error);
+      throw error; // Re-throw so caller knows payment failed
     }
 
     this.payments.set(transactionId, payment);
     return payment;
   }
 
-  async executeRealBlockchainTransaction(request: PaymentRequest): Promise<string> {
-    try {
-      if (request.currency === 'USDC') {
-        // USDC SPL Token transfer
-        return await transferUSDC(request.from, request.to, request.amount);
-      } else {
-        // Native SOL transfer
-        const fromKeypair = request.fromKeypair || await getOrCreateKeypair(request.from);
-        const toPubkey = new PublicKey(request.to);
-        
-        // Convert amount to lamports (1 SOL = 1e9 lamports)
-        const lamports = Math.floor(request.amount * LAMPORTS_PER_SOL);
-        
-        // Create transaction
-        const transaction = new Transaction().add(
-          SystemProgram.transfer({
-            fromPubkey: fromKeypair.publicKey,
-            toPubkey,
-            lamports,
-          })
-        );
-        
-        // Send and confirm transaction
-        const signature = await sendAndConfirmTransaction(
-          this.connection,
-          transaction,
-          [fromKeypair],
-          {
-            commitment: 'confirmed',
-          }
-        );
-        
-        return signature;
-      }
-    } catch (error: any) {
-      console.error('Blockchain transaction failed:', error);
-      throw new Error(`Solana transaction failed: ${error.message}`);
+  async refundPayment(transactionId: string, reason: string): Promise<PaymentResponse> {
+    const originalPayment = this.getPayment(transactionId);
+    
+    if (originalPayment.status !== 'completed') {
+      throw new Error('Can only refund completed payments');
     }
+
+    if (this.useRealTransactions) {
+      throw new Error('Refunds require a new on-chain transaction when REAL_TRANSACTIONS=true');
+    }
+
+    // Create reverse payment
+    const refund = await this.processPayment({
+      from: originalPayment.to!,
+      to: originalPayment.from!,
+      amount: originalPayment.amount,
+      currency: originalPayment.currency as 'USDC' | 'SOL',
+      serviceId: `refund-${originalPayment.serviceId}`,
+      metadata: { 
+        refund: true, 
+        originalTransaction: transactionId,
+        reason 
+      },
+    });
+
+    console.log(`🔄 Refunded ${originalPayment.amount} ${originalPayment.currency} (${reason})`);
+    
+    return refund;
   }
 
   private async simulateBlockchainTransaction(request: PaymentRequest): Promise<void> {
@@ -150,6 +149,10 @@ export class PaymentRouter {
     payment: PaymentRequest,
     splits: { agentId: string; percentage: number }[]
   ): Promise<PaymentResponse[]> {
+    if (this.useRealTransactions) {
+      throw new Error('Split payments require manual settlement when REAL_TRANSACTIONS=true');
+    }
+
     const totalPercentage = splits.reduce((sum, split) => sum + split.percentage, 0);
     if (Math.abs(totalPercentage - 100) > 0.01) {
       throw new Error('Split percentages must sum to 100');
@@ -196,6 +199,119 @@ export class PaymentRouter {
 
   private generateTransactionId(): string {
     return `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  isRealTransactionsEnabled(): boolean {
+    return this.useRealTransactions;
+  }
+
+  private async verifyOnChainPayment(request: PaymentRequest, signature: string): Promise<void> {
+    try {
+      const transaction = await this.connection.getParsedTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+
+      if (!transaction || !transaction.meta) {
+        throw new Error('Transaction not found or not yet confirmed on-chain');
+      }
+
+      if (transaction.meta.err) {
+        throw new Error('Transaction execution failed on-chain');
+      }
+
+      if (request.currency === 'SOL') {
+        this.verifySolTransfer(request, transaction);
+      } else {
+        this.verifyUSDCPayment(request, transaction);
+      }
+    } catch (error: any) {
+      throw new Error(`Failed to verify on-chain payment: ${error.message}`);
+    }
+  }
+
+  private verifySolTransfer(request: PaymentRequest, tx: ParsedTransactionWithMeta): void {
+    const lamportsExpected = Math.floor(request.amount * LAMPORTS_PER_SOL);
+    const instructions = tx.transaction.message.instructions;
+
+    const transferInstruction = instructions.find((ix): ix is ParsedInstruction =>
+      this.isParsedInstruction(ix) && ix.program === 'system' && ix.parsed?.type === 'transfer'
+    );
+
+    if (!transferInstruction || !transferInstruction.parsed) {
+      throw new Error('No SOL transfer instruction found in transaction');
+    }
+
+    const info: any = transferInstruction.parsed.info;
+
+    if (info.source !== request.from) {
+      throw new Error('SOL transfer source does not match payment request');
+    }
+
+    if (info.destination !== request.to) {
+      throw new Error('SOL transfer destination does not match payment request');
+    }
+
+    const lamportsActual = typeof info.lamports === 'string'
+      ? parseInt(info.lamports, 10)
+      : info.lamports;
+
+    if (lamportsActual !== lamportsExpected) {
+      throw new Error('SOL transfer amount does not match payment request');
+    }
+  }
+
+  private verifyUSDCPayment(request: PaymentRequest, tx: ParsedTransactionWithMeta): void {
+    const usdcMint = getUSDCMint();
+    if (!usdcMint) {
+      throw new Error('USDC mint not initialized');
+    }
+
+    const mintAddress = usdcMint.toBase58();
+    const preBalances = (tx.meta?.preTokenBalances || []).filter((balance) => balance.mint === mintAddress);
+    const postBalances = (tx.meta?.postTokenBalances || []).filter((balance) => balance.mint === mintAddress);
+
+    const senderPre = preBalances.find((balance) => balance.owner === request.from);
+    const senderPost = postBalances.find((balance) => balance.owner === request.from);
+    const recipientPre = preBalances.find((balance) => balance.owner === request.to);
+    const recipientPost = postBalances.find((balance) => balance.owner === request.to);
+
+    if (!senderPre || !senderPost) {
+      throw new Error('Sender USDC balance not found in transaction metadata');
+    }
+
+    if (!recipientPost) {
+      throw new Error('Recipient USDC balance not found in transaction metadata');
+    }
+
+    const amountUnits = BigInt(Math.round(request.amount * 1_000_000));
+    const senderDelta = BigInt(senderPre.uiTokenAmount.amount) - BigInt(senderPost.uiTokenAmount.amount);
+
+    if (senderDelta !== amountUnits) {
+      throw new Error('USDC amount debited from sender does not match payment request');
+    }
+
+    const recipientPreAmount = recipientPre ? BigInt(recipientPre.uiTokenAmount.amount) : BigInt(0);
+    const recipientPostAmount = BigInt(recipientPost.uiTokenAmount.amount);
+    const recipientDelta = recipientPostAmount - recipientPreAmount;
+
+    if (recipientDelta !== amountUnits) {
+      throw new Error('USDC amount credited to recipient does not match payment request');
+    }
+  }
+
+  private validateAddress(address: string, field: 'from' | 'to'): void {
+    try {
+      new PublicKey(address);
+    } catch (error) {
+      throw new Error(`Invalid ${field} address: ${address}`);
+    }
+  }
+
+  private isParsedInstruction(
+    instruction: ParsedInstruction | PartiallyDecodedInstruction
+  ): instruction is ParsedInstruction {
+    return 'parsed' in instruction;
   }
 }
 
