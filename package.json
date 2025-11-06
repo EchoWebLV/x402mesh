@@ -4,17 +4,23 @@
   "description": "Agent-to-Agent Payment Router for Solana x402 Hackathon",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "web"
   ],
   "scripts": {
-    "setup": "npm install && npm run build",
-    "build": "npm run build --workspaces",
+    "setup": "npm install && npm run build:core",
+    "setup:wallets": "npx tsx scripts/setup-wallets.ts",
+    "build": "npm run build:core && npm run web:build",
+    "build:core": "npm run build -w @a2a/registry -w @a2a/router -w @a2a/sdk",
     "dev": "concurrently \"npm run dev -w @a2a/registry\" \"npm run dev -w @a2a/router\"",
+    "web": "cd web && npm install && npm run dev",
+    "web:build": "cd web && npm install && npm run build",
     "demo": "node demo/run-demo.js",
     "demo:chain": "node demo/chain-demo.js",
+    "demo:real": "REAL_TRANSACTIONS=true node demo/chain-demo.js",
     "verify": "node verify-setup.js",
     "test": "echo \"Tests coming soon\" && exit 0",
-    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist"
+    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist web/node_modules web/.next"
   },
   "keywords": [
     "solana",

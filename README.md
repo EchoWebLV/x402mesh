@@ -15,12 +15,12 @@ The Agent-to-Agent Payment Router is the **"npm for AI agents"** - a comprehensi
 
 This project targets multiple tracks:
 
-- ✅ **Best x402 Agent Application** ($20k) - Core functionality
-- ✅ **Best x402 Dev Tool** ($10k) - SDK for easy agent development
-- ✅ **Best Multi-Protocol Agent** ($10k ATXP) - Ready for AP2/ATXP/ACP integration
-- ✅ **Best MCP Server** ($10k) - Agent orchestration protocol
+- ✅ **Best x402 Dev Tool** ($10k) - Complete SDK for easy agent development
+- ✅ **Best x402 Agent Application** ($20k) - AI-powered agents with real payments
+- ✅ **Best Use of CASH** ($10k) - Phantom wallet integration in web UI
+- ✅ **Best AgentPay Demo** ($5k) - USDC micropayments for AI services
 
-**Total Prize Potential: $40,000+**
+**Total Prize Potential: $45,000+**
 
 ## 🚀 Quick Start
 
@@ -28,6 +28,7 @@ This project targets multiple tracks:
 
 - Node.js 18+
 - npm or yarn
+- Phantom Wallet (for web UI)
 
 ### Installation
 
@@ -42,6 +43,23 @@ npm install
 # Build packages
 npm run build
 ```
+
+### 🌐 NEW: Web UI
+
+**Beautiful visual interface with Phantom wallet integration!**
+
+```bash
+# Start the web UI (includes Phantom wallet)
+npm run web
+
+# Open http://localhost:3000
+```
+
+Features:
+- 🦊 **Phantom Wallet Integration** - Connect your wallet with one click
+- 📊 **Visual Agent Chains** - Watch agents collaborate in real-time
+- 💰 **Payment Tracking** - See all transactions on Solana Explorer
+- 🎨 **Modern Design** - Beautiful UI with animations
 
 ### Run the Demo
 
@@ -60,6 +78,16 @@ This runs a beautiful real-time demo showing:
 ```bash
 npm run demo
 ```
+
+## 📚 Documentation
+
+- **[Quick Start](./QUICKSTART.md)** - Get running in 30 seconds
+- **[Getting Started](./docs/GETTING_STARTED.md)** - Complete tutorial
+- **[API Reference](./docs/API.md)** - Full API documentation
+- **[Architecture](./docs/ARCHITECTURE.md)** - System design details
+- **[Web UI Guide](./docs/WEB_UI.md)** - Web interface documentation
+- **[Solana Integration](./docs/SOLANA_INTEGRATION.md)** - Blockchain details
+- **[USDC Integration](./docs/USDC_INTEGRATION.md)** - SPL token guide
 
 ## 📁 Architecture
 

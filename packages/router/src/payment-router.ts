@@ -1,4 +1,6 @@
-import { Connection, Keypair, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, sendAndConfirmTransaction } from '@solana/web3.js';
+import { getOrCreateKeypair } from './wallet-utils.js';
+import { transferUSDC, initializeUSDCMint } from './usdc-utils.js';
 
 interface PaymentRequest {
   from: string;
@@ -7,6 +9,7 @@ interface PaymentRequest {
   currency: 'USDC' | 'SOL';
   serviceId: string;
   metadata?: any;
+  fromKeypair?: Keypair; // For actual signing
 }
 
 interface PaymentResponse {
@@ -18,6 +21,8 @@ interface PaymentResponse {
   from?: string;
   to?: string;
   serviceId?: string;
+  signature?: string; // Actual Solana signature
+  explorerUrl?: string;
 }
 
 export class PaymentRouter {
@@ -25,10 +30,25 @@ export class PaymentRouter {
   private connection: Connection;
   private totalProcessed: number = 0;
   private totalVolume: number = 0;
+  private useRealTransactions: boolean;
 
-  constructor() {
+  constructor(useRealTransactions?: boolean) {
     // Connect to Solana devnet
     this.connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    this.useRealTransactions = useRealTransactions || false;
+    
+    // Initialize USDC mint if using real transactions
+    if (this.useRealTransactions) {
+      this.initializeUSDC();
+    }
+  }
+
+  private async initializeUSDC() {
+    try {
+      await initializeUSDCMint();
+    } catch (error) {
+      console.warn('Failed to initialize USDC mint:', error);
+    }
   }
 
   async processPayment(request: PaymentRequest): Promise<PaymentResponse> {
@@ -48,19 +68,25 @@ export class PaymentRouter {
     this.payments.set(transactionId, payment);
 
     try {
-      // Simulate payment processing with x402
-      // In production, this would:
-      // 1. Verify HTTP 402 Payment Required header
-      // 2. Process USDC/SOL transfer on Solana
-      // 3. Return payment proof
-      
-      await this.simulateBlockchainTransaction(request);
+      if (this.useRealTransactions) {
+        // REAL Solana transaction
+        const signature = await this.executeRealBlockchainTransaction(request);
+        payment.signature = signature;
+        payment.explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+      } else {
+        // Simulated for demo (faster)
+        await this.simulateBlockchainTransaction(request);
+      }
       
       payment.status = 'completed';
       this.totalProcessed++;
       this.totalVolume += request.amount;
       
       console.log(`💰 Payment processed: ${request.amount} ${request.currency} from ${this.truncateAddress(request.from)} to ${this.truncateAddress(request.to)} for ${request.serviceId}`);
+      if (payment.signature) {
+        console.log(`   📝 Signature: ${payment.signature}`);
+        console.log(`   🔍 Explorer: ${payment.explorerUrl}`);
+      }
     } catch (error) {
       payment.status = 'failed';
       console.error('Payment failed:', error);
@@ -68,6 +94,56 @@ export class PaymentRouter {
 
     this.payments.set(transactionId, payment);
     return payment;
+  }
+
+  async executeRealBlockchainTransaction(request: PaymentRequest): Promise<string> {
+    try {
+      if (request.currency === 'USDC') {
+        // USDC SPL Token transfer
+        return await transferUSDC(request.from, request.to, request.amount);
+      } else {
+        // Native SOL transfer
+        const fromKeypair = request.fromKeypair || await getOrCreateKeypair(request.from);
+        const toPubkey = new PublicKey(request.to);
+        
+        // Convert amount to lamports (1 SOL = 1e9 lamports)
+        const lamports = Math.floor(request.amount * LAMPORTS_PER_SOL);
+        
+        // Create transaction
+        const transaction = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey: fromKeypair.publicKey,
+            toPubkey,
+            lamports,
+          })
+        );
+        
+        // Send and confirm transaction
+        const signature = await sendAndConfirmTransaction(
+          this.connection,
+          transaction,
+          [fromKeypair],
+          {
+            commitment: 'confirmed',
+          }
+        );
+        
+        return signature;
+      }
+    } catch (error: any) {
+      console.error('Blockchain transaction failed:', error);
+      throw new Error(`Solana transaction failed: ${error.message}`);
+    }
+  }
+
+  private async simulateBlockchainTransaction(request: PaymentRequest): Promise<void> {
+    // Simulate blockchain delay
+    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+  }
+
+  private truncateAddress(address: string): string {
+    if (address.length <= 10) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
   async splitPayment(
@@ -118,36 +194,8 @@ export class PaymentRouter {
     };
   }
 
-  private async simulateBlockchainTransaction(request: PaymentRequest): Promise<void> {
-    // Simulate blockchain delay
-    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
-    
-    // In production, this would create actual Solana transaction:
-    /*
-    const fromPubkey = new PublicKey(request.from);
-    const toPubkey = new PublicKey(request.to);
-    
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey,
-        toPubkey,
-        lamports: request.amount * LAMPORTS_PER_SOL,
-      })
-    );
-    
-    // Sign and send transaction
-    const signature = await this.connection.sendTransaction(transaction, [payer]);
-    await this.connection.confirmTransaction(signature);
-    */
-  }
-
   private generateTransactionId(): string {
     return `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private truncateAddress(address: string): string {
-    if (address.length <= 10) return address;
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 }
 
