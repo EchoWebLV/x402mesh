@@ -1,18 +1,18 @@
 import 'dotenv/config';
 import express from 'express';
+import axios from 'axios';
 import { Agent, AgentCapability } from '../../packages/sdk/src/agent.js';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
 
-const connection = new Connection(
-  process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-  'confirmed'
-);
+const ROUTER_URL = process.env.ROUTER_URL || 'http://localhost:3002';
+const ANALYZER_WALLET_NAME = process.env.ANALYZER_WALLET || 'AnalyzerWallet';
 
 class AnalyzerAgent extends Agent {
   private app: express.Application;
   private port: number;
+  private routerUrl: string;
 
-  constructor(port: number = 3102) {
+  constructor(walletAddress: string, port: number = 3102) {
     const capabilities: AgentCapability[] = [
       {
         name: 'analyze_sentiment',
@@ -20,8 +20,8 @@ class AnalyzerAgent extends Agent {
         inputSchema: { text: 'string' },
         outputSchema: { sentiment: 'string', score: 'number', insights: 'string[]' },
         pricing: {
-          amount: 0.015,
-          currency: 'USDC',
+          amount: 0.012,
+          currency: 'SOL',
           model: 'per_request',
         },
       },
@@ -32,12 +32,13 @@ class AnalyzerAgent extends Agent {
       description: 'Analyzes text sentiment and provides insights',
       version: '1.0.0',
       capabilities,
-      walletAddress: 'AnalyzerWallet789GHI',
+      walletAddress,
       port,
       tags: ['sentiment', 'analysis', 'nlp'],
     });
 
     this.port = port;
+    this.routerUrl = ROUTER_URL;
     this.app = express();
     this.app.use(express.json());
     this.setupEndpoints();
@@ -46,77 +47,34 @@ class AnalyzerAgent extends Agent {
   private setupEndpoints() {
     this.app.post('/execute', async (req, res) => {
       const { capability, input, payment } = req.body;
-      
+
       console.log(`\n🔍 Analyzer Agent received request:`);
       console.log(`   Capability: ${capability}`);
       console.log(`   Input: ${JSON.stringify(input).substring(0, 100)}...`);
-      
-      // x402 Protocol: Verify payment (real or simulated)
-      const requiredCapability = this.metadata.capabilities.find(c => c.name === capability);
-      const requiredAmount = requiredCapability?.pricing.amount || 0.015;
-      
-      if (!payment) {
-        res.status(402).set({
-          'X-Payment-Required': 'true',
-          'X-Payment-Amount': requiredAmount.toString(),
-          'X-Payment-Currency': 'USDC',
-          'X-Payment-Address': this.metadata.walletAddress,
-          'X-Service-Id': capability,
-        }).json({ 
-          error: 'Payment Required',
-          paymentRequired: true,
-          amount: requiredAmount,
-          currency: 'USDC',
-          walletAddress: this.metadata.walletAddress,
-        });
+
+      const capabilityInfo = this.metadata.capabilities.find(c => c.name === capability);
+      if (!capabilityInfo) {
+        res.status(400).json({ success: false, error: `Capability ${capability} not available` });
         return;
       }
-      
-      // REAL VERIFICATION MODE: Check on blockchain
-      if (payment.onChain === true && payment.signature) {
-        try {
-          const tx = await connection.getTransaction(payment.signature, {
-            maxSupportedTransactionVersion: 0,
-          });
-          
-          if (!tx || tx.meta?.err) {
-            res.status(402).json({
-              error: 'Payment transaction not found or failed on-chain',
-              paymentRequired: true,
-            });
-            return;
-          }
-          
-          console.log(`   ✅ Payment verified on-chain: ${payment.signature.slice(0, 8)}...`);
-        } catch (error) {
-          console.error('   ❌ On-chain verification failed:', error);
-          res.status(402).json({
-            error: 'Could not verify payment on blockchain',
-            paymentRequired: true,
-          });
-          return;
-        }
-      } else if (payment.status === 'completed') {
-        // SIMULATED MODE: Accept completed status
-        console.log(`   ✅ Payment accepted (simulated): ${payment.transactionId}`);
-      } else {
-        res.status(402).json({
-          error: 'Invalid payment proof',
-          paymentRequired: true,
-        });
+
+      try {
+        await this.verifyPayment(payment, capabilityInfo);
+      } catch (error: any) {
+        const message = error.message || 'Payment verification failed';
+        res.status(error.statusCode || 402).json({ success: false, error: message, paymentRequired: true });
         return;
       }
 
       try {
         const result = await this.execute(capability, input);
-        
-        // Add x402 success headers
+
         res.set({
           'X-Payment-Received': 'true',
           'X-Payment-Status': payment.status,
           'X-Transaction-Id': payment.transactionId,
         });
-        
+
         res.json({ success: true, data: result, payment });
       } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });
@@ -128,6 +86,39 @@ class AnalyzerAgent extends Agent {
     });
   }
 
+  private async verifyPayment(payment: any, capability: AgentCapability) {
+    if (!payment || !payment.transactionId) {
+      const err: any = new Error('Payment Required');
+      err.statusCode = 402;
+      throw err;
+    }
+
+    try {
+      const response = await axios.get(`${this.routerUrl}/payments/${payment.transactionId}`);
+      const paymentRecord = response.data;
+
+      if (paymentRecord.status !== 'completed') {
+        throw new Error('Payment not completed');
+      }
+
+      if (paymentRecord.to !== this.metadata.walletAddress) {
+        throw new Error('Payment destination mismatch');
+      }
+
+      if (paymentRecord.currency !== capability.pricing.currency) {
+        throw new Error('Payment currency mismatch');
+      }
+
+      if (Math.abs(paymentRecord.amount - capability.pricing.amount) > 0.0000001) {
+        throw new Error('Payment amount mismatch');
+      }
+    } catch (error: any) {
+      const err: any = new Error(error.response?.data?.error || error.message || 'Payment verification failed');
+      err.statusCode = 402;
+      throw err;
+    }
+  }
+
   async execute(capability: string, input: any): Promise<any> {
     if (capability === 'analyze_sentiment') {
       return this.analyzeSentiment(input);
@@ -136,26 +127,25 @@ class AnalyzerAgent extends Agent {
   }
 
   private async analyzeSentiment(input: any): Promise<any> {
-    await new Promise(resolve => setTimeout(resolve, 350)); // Simulate processing
+    await new Promise(resolve => setTimeout(resolve, 350));
 
-    const text = typeof input === 'string' ? input : 
-                 (input.summary ? input.summary.join(' ') : 
-                  input.text || JSON.stringify(input));
+    const text = typeof input === 'string'
+      ? input
+      : (Array.isArray(input.summary) ? input.summary.join(' ') : input.text || JSON.stringify(input));
 
-    // Simple sentiment analysis
     const positiveWords = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'happy', 'best'];
     const negativeWords = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'hate', 'sad', 'poor', 'disappointing'];
-    
+
     const words = text.toLowerCase().split(/\s+/);
     let score = 0;
-    
+
     words.forEach(word => {
       if (positiveWords.some(pw => word.includes(pw))) score += 1;
       if (negativeWords.some(nw => word.includes(nw))) score -= 1;
     });
 
     const normalizedScore = Math.max(-1, Math.min(1, score / Math.max(words.length * 0.1, 1)));
-    
+
     let sentiment: string;
     if (normalizedScore > 0.2) sentiment = 'positive';
     else if (normalizedScore < -0.2) sentiment = 'negative';
@@ -185,9 +175,15 @@ class AnalyzerAgent extends Agent {
   }
 }
 
-// Start the agent
-const agent = new AnalyzerAgent(3102);
-agent.startServer().catch(console.error);
+export async function startAnalyzerAgent(port: number = 3102) {
+  const walletAddress = await getWalletAddress(ANALYZER_WALLET_NAME);
+  const agent = new AnalyzerAgent(walletAddress, port);
+  await agent.startServer();
+  console.log(`🔍 Analyzer Agent wallet: ${walletAddress}`);
+  return agent;
+}
+
+startAnalyzerAgent().catch(console.error);
 
 export { AnalyzerAgent };
 

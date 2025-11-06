@@ -305,7 +305,7 @@ export function AgentChain() {
             icon="🌍"
             title="Translator Agent"
             description="Translating to Spanish"
-            price="$0.01 USDC"
+            price="0.010 SOL"
             active={currentStep >= 1}
             completed={currentStep > 1}
           />
@@ -324,7 +324,7 @@ export function AgentChain() {
             icon="📝"
             title="Summarizer Agent"
             description="Creating bullet points"
-            price="$0.02 USDC"
+            price="0.015 SOL"
             active={currentStep >= 2}
             completed={currentStep > 2}
           />
@@ -343,7 +343,7 @@ export function AgentChain() {
             icon="🔍"
             title="Analyzer Agent"
             description="Analyzing sentiment"
-            price="$0.015 USDC"
+            price="0.012 SOL"
             active={currentStep >= 3}
             completed={currentStep > 3}
           />
@@ -422,7 +422,7 @@ export function AgentChain() {
                     <div key={i} className="flex items-center justify-between bg-gray-800/50 rounded-lg p-3">
                       <span className="text-gray-300">{payment.agent}</span>
                       <div className="text-right">
-                        <div className="text-primary font-semibold">${payment.amount.toFixed(4)} USDC</div>
+                        <div className="text-primary font-semibold">{payment.amount.toFixed(3)} SOL</div>
                         <div className="text-xs text-gray-500">
                           Tx: {payment.signature}
                           {payment.explorerUrl && (
@@ -446,7 +446,7 @@ export function AgentChain() {
                         <span className="text-xs text-gray-400 ml-2">• {results.executionTime}ms</span>
                       )}
                     </div>
-                    <span className="text-xl font-bold text-primary">${results.totalCost.toFixed(4)} USDC</span>
+                    <span className="text-xl font-bold text-primary">{results.totalCost.toFixed(3)} SOL</span>
                   </div>
                 </div>
               </div>

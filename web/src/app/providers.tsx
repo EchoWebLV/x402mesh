@@ -18,13 +18,12 @@ export default function Providers({ children }: ProvidersProps) {
     if (typeof window === 'undefined') {
       return []
     }
-
     return [new PhantomWalletAdapter()]
   }, [])
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <SolanaWalletProvider wallets={wallets} autoConnect>
+      <SolanaWalletProvider wallets={wallets} autoConnect={false}>
         {children}
       </SolanaWalletProvider>
     </ConnectionProvider>

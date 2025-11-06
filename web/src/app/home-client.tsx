@@ -5,14 +5,12 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { AgentChain } from '@/components/AgentChain'
 import { PaymentTracker } from '@/components/PaymentTracker'
 import { AgentCards } from '@/components/AgentCards'
-import Providers from './providers'
 
 export default function HomeClient() {
   const [activeTab, setActiveTab] = useState<'chain' | 'payments'>('chain')
 
   return (
-    <Providers>
-      <main className="min-h-screen bg-gradient-to-br from-dark via-gray-900 to-purple-900">
+    <main className="min-h-screen bg-gradient-to-br from-dark via-gray-900 to-purple-900">
       {/* Header */}
       <header className="border-b border-gray-800 bg-dark/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -111,8 +109,7 @@ export default function HomeClient() {
           </div>
         </div>
       </footer>
-      </main>
-    </Providers>
+    </main>
   )
 }
 

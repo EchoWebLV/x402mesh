@@ -1,18 +1,18 @@
 import 'dotenv/config';
 import express from 'express';
+import axios from 'axios';
 import { Agent, AgentCapability } from '../../packages/sdk/src/agent.js';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
 
-const connection = new Connection(
-  process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-  'confirmed'
-);
+const ROUTER_URL = process.env.ROUTER_URL || 'http://localhost:3002';
+const TRANSLATOR_WALLET_NAME = process.env.TRANSLATOR_WALLET || 'TranslatorWallet';
 
 class TranslatorAgent extends Agent {
   private app: express.Application;
   private port: number;
+  private routerUrl: string;
 
-  constructor(port: number = 3100) {
+  constructor(walletAddress: string, port: number = 3100) {
     const capabilities: AgentCapability[] = [
       {
         name: 'translate',
@@ -21,7 +21,7 @@ class TranslatorAgent extends Agent {
         outputSchema: { translatedText: 'string', language: 'string' },
         pricing: {
           amount: 0.01,
-          currency: 'USDC',
+          currency: 'SOL',
           model: 'per_request',
         },
       },
@@ -32,12 +32,13 @@ class TranslatorAgent extends Agent {
       description: 'Translates text between multiple languages',
       version: '1.0.0',
       capabilities,
-      walletAddress: 'TranslatorWallet123ABC',
+      walletAddress,
       port,
       tags: ['translation', 'language', 'nlp'],
     });
 
     this.port = port;
+    this.routerUrl = ROUTER_URL;
     this.app = express();
     this.app.use(express.json());
     this.setupEndpoints();
@@ -46,79 +47,34 @@ class TranslatorAgent extends Agent {
   private setupEndpoints() {
     this.app.post('/execute', async (req, res) => {
       const { capability, input, payment } = req.body;
-      
+
       console.log(`\n🌍 Translator Agent received request:`);
       console.log(`   Capability: ${capability}`);
       console.log(`   Input: ${JSON.stringify(input)}`);
-      
-      // x402 Protocol: Verify payment (real or simulated)
-      const requiredCapability = this.metadata.capabilities.find(c => c.name === capability);
-      const requiredAmount = requiredCapability?.pricing.amount || 0.01;
-      
-      if (!payment) {
-        // Return HTTP 402 Payment Required
-        res.status(402).set({
-          'X-Payment-Required': 'true',
-          'X-Payment-Amount': requiredAmount.toString(),
-          'X-Payment-Currency': 'USDC',
-          'X-Payment-Address': this.metadata.walletAddress,
-          'X-Service-Id': capability,
-        }).json({ 
-          error: 'Payment Required',
-          paymentRequired: true,
-          amount: requiredAmount,
-          currency: 'USDC',
-          walletAddress: this.metadata.walletAddress,
-        });
+
+      const capabilityInfo = this.metadata.capabilities.find(c => c.name === capability);
+      if (!capabilityInfo) {
+        res.status(400).json({ success: false, error: `Capability ${capability} not available` });
         return;
       }
-      
-      // REAL VERIFICATION MODE: Check payment on Solana blockchain
-      if (payment.onChain === true && payment.signature) {
-        try {
-          const tx = await connection.getTransaction(payment.signature, {
-            maxSupportedTransactionVersion: 0,
-          });
-          
-          if (!tx || tx.meta?.err) {
-            res.status(402).json({
-              error: 'Payment transaction not found or failed on-chain',
-              paymentRequired: true,
-            });
-            return;
-          }
-          
-          console.log(`   ✅ Payment verified on-chain: ${payment.signature.slice(0, 8)}...`);
-        } catch (error) {
-          console.error('   ❌ On-chain verification failed:', error);
-          res.status(402).json({
-            error: 'Could not verify payment on blockchain',
-            paymentRequired: true,
-          });
-          return;
-        }
-      } else if (payment.status === 'completed') {
-        // SIMULATED MODE: Accept completed status
-        console.log(`   ✅ Payment accepted (simulated): ${payment.transactionId}`);
-      } else {
-        // No valid payment proof
-        res.status(402).json({
-          error: 'Invalid payment proof - need either on-chain signature or completed status',
-          paymentRequired: true,
-        });
+
+      try {
+        await this.verifyPayment(payment, capabilityInfo);
+      } catch (error: any) {
+        const message = error.message || 'Payment verification failed';
+        res.status(error.statusCode || 402).json({ success: false, error: message, paymentRequired: true });
         return;
       }
 
       try {
         const result = await this.execute(capability, input);
-        
-        // Add x402 success headers
+
         res.set({
           'X-Payment-Received': 'true',
           'X-Payment-Status': payment.status,
           'X-Transaction-Id': payment.transactionId,
         });
-        
+
         res.json({ success: true, data: result, payment });
       } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });
@@ -130,6 +86,39 @@ class TranslatorAgent extends Agent {
     });
   }
 
+  private async verifyPayment(payment: any, capability: AgentCapability) {
+    if (!payment || !payment.transactionId) {
+      const err: any = new Error('Payment Required');
+      err.statusCode = 402;
+      throw err;
+    }
+
+    try {
+      const response = await axios.get(`${this.routerUrl}/payments/${payment.transactionId}`);
+      const paymentRecord = response.data;
+
+      if (paymentRecord.status !== 'completed') {
+        throw new Error('Payment not completed');
+      }
+
+      if (paymentRecord.to !== this.metadata.walletAddress) {
+        throw new Error('Payment destination mismatch');
+      }
+
+      if (paymentRecord.currency !== capability.pricing.currency) {
+        throw new Error('Payment currency mismatch');
+      }
+
+      if (Math.abs(paymentRecord.amount - capability.pricing.amount) > 0.0000001) {
+        throw new Error('Payment amount mismatch');
+      }
+    } catch (error: any) {
+      const err: any = new Error(error.response?.data?.error || error.message || 'Payment verification failed');
+      err.statusCode = 402;
+      throw err;
+    }
+  }
+
   async execute(capability: string, input: any): Promise<any> {
     if (capability === 'translate') {
       return this.translate(input);
@@ -138,45 +127,44 @@ class TranslatorAgent extends Agent {
   }
 
   private async translate(input: { text: string; targetLanguage: string }): Promise<any> {
-    // Simulate translation (in production, would use actual translation API)
     const translations: Record<string, Record<string, string>> = {
-      'spanish': {
-        'hello': 'hola',
-        'world': 'mundo',
+      spanish: {
+        hello: 'hola',
+        world: 'mundo',
         'good morning': 'buenos días',
         'how are you': 'cómo estás',
         'thank you': 'gracias',
         'artificial intelligence': 'inteligencia artificial',
         'payment system': 'sistema de pago',
-        'blockchain': 'cadena de bloques',
+        blockchain: 'cadena de bloques',
       },
-      'french': {
-        'hello': 'bonjour',
-        'world': 'monde',
+      french: {
+        hello: 'bonjour',
+        world: 'monde',
         'good morning': 'bonjour',
         'how are you': 'comment allez-vous',
         'thank you': 'merci',
         'artificial intelligence': 'intelligence artificielle',
         'payment system': 'système de paiement',
-        'blockchain': 'blockchain',
+        blockchain: 'blockchain',
       },
-      'german': {
-        'hello': 'hallo',
-        'world': 'welt',
+      german: {
+        hello: 'hallo',
+        world: 'welt',
         'good morning': 'guten morgen',
         'how are you': 'wie geht es dir',
         'thank you': 'danke',
         'artificial intelligence': 'künstliche intelligenz',
         'payment system': 'zahlungssystem',
-        'blockchain': 'blockchain',
+        blockchain: 'blockchain',
       },
     };
 
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate processing
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     const lang = input.targetLanguage.toLowerCase();
     let translatedText = input.text.toLowerCase();
-    
+
     if (translations[lang]) {
       Object.entries(translations[lang]).forEach(([key, value]) => {
         const regex = new RegExp(key, 'gi');
@@ -201,9 +189,15 @@ class TranslatorAgent extends Agent {
   }
 }
 
-// Start the agent
-const agent = new TranslatorAgent(3100);
-agent.startServer().catch(console.error);
+export async function startTranslatorAgent(port: number = 3100) {
+  const walletAddress = await getWalletAddress(TRANSLATOR_WALLET_NAME);
+  const agent = new TranslatorAgent(walletAddress, port);
+  await agent.startServer();
+  console.log(`🌍 Translator Agent wallet: ${walletAddress}`);
+  return agent;
+}
+
+startTranslatorAgent().catch(console.error);
 
 export { TranslatorAgent };
 

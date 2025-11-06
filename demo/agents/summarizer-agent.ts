@@ -1,20 +1,19 @@
 import 'dotenv/config';
 import express from 'express';
+import axios from 'axios';
 import { Agent, AgentCapability } from '../../packages/sdk/src/agent.js';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
 
-const connection = new Connection(
-  process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-  'confirmed'
-);
+const ROUTER_URL = process.env.ROUTER_URL || 'http://localhost:3002';
+const SUMMARIZER_WALLET_NAME = process.env.SUMMARIZER_WALLET || 'SummarizerWallet';
 
 class SummarizerAgent extends Agent {
   private app: express.Application;
   private port: number;
   private openaiClient: any = null;
-  
-  constructor(port: number = 3101) {
-    // Initialize OpenAI if API key is provided
+  private routerUrl: string;
+
+  constructor(walletAddress: string, port: number = 3101) {
     if (process.env.OPENAI_API_KEY) {
       import('openai').then(({ default: OpenAI }) => {
         this.openaiClient = new OpenAI({
@@ -35,8 +34,8 @@ class SummarizerAgent extends Agent {
         inputSchema: { text: 'string', maxBullets: 'number' },
         outputSchema: { summary: 'string[]', wordCount: 'number' },
         pricing: {
-          amount: 0.02,
-          currency: 'USDC',
+          amount: 0.015,
+          currency: 'SOL',
           model: 'per_request',
         },
       },
@@ -47,12 +46,13 @@ class SummarizerAgent extends Agent {
       description: 'Summarizes text into key points',
       version: '1.0.0',
       capabilities,
-      walletAddress: 'SummarizerWallet456DEF',
+      walletAddress,
       port,
       tags: ['summarization', 'nlp', 'text-processing'],
     });
 
     this.port = port;
+    this.routerUrl = ROUTER_URL;
     this.app = express();
     this.app.use(express.json());
     this.setupEndpoints();
@@ -61,77 +61,34 @@ class SummarizerAgent extends Agent {
   private setupEndpoints() {
     this.app.post('/execute', async (req, res) => {
       const { capability, input, payment } = req.body;
-      
+
       console.log(`\n📝 Summarizer Agent received request:`);
       console.log(`   Capability: ${capability}`);
       console.log(`   Input: ${JSON.stringify(input).substring(0, 100)}...`);
-      
-      // x402 Protocol: Verify payment (real or simulated)
-      const requiredCapability = this.metadata.capabilities.find(c => c.name === capability);
-      const requiredAmount = requiredCapability?.pricing.amount || 0.02;
-      
-      if (!payment) {
-        res.status(402).set({
-          'X-Payment-Required': 'true',
-          'X-Payment-Amount': requiredAmount.toString(),
-          'X-Payment-Currency': 'USDC',
-          'X-Payment-Address': this.metadata.walletAddress,
-          'X-Service-Id': capability,
-        }).json({ 
-          error: 'Payment Required',
-          paymentRequired: true,
-          amount: requiredAmount,
-          currency: 'USDC',
-          walletAddress: this.metadata.walletAddress,
-        });
+
+      const capabilityInfo = this.metadata.capabilities.find(c => c.name === capability);
+      if (!capabilityInfo) {
+        res.status(400).json({ success: false, error: `Capability ${capability} not available` });
         return;
       }
-      
-      // REAL VERIFICATION MODE: Check on blockchain
-      if (payment.onChain === true && payment.signature) {
-        try {
-          const tx = await connection.getTransaction(payment.signature, {
-            maxSupportedTransactionVersion: 0,
-          });
-          
-          if (!tx || tx.meta?.err) {
-            res.status(402).json({
-              error: 'Payment transaction not found or failed on-chain',
-              paymentRequired: true,
-            });
-            return;
-          }
-          
-          console.log(`   ✅ Payment verified on-chain: ${payment.signature.slice(0, 8)}...`);
-        } catch (error) {
-          console.error('   ❌ On-chain verification failed:', error);
-          res.status(402).json({
-            error: 'Could not verify payment on blockchain',
-            paymentRequired: true,
-          });
-          return;
-        }
-      } else if (payment.status === 'completed') {
-        // SIMULATED MODE: Accept completed status
-        console.log(`   ✅ Payment accepted (simulated): ${payment.transactionId}`);
-      } else {
-        res.status(402).json({
-          error: 'Invalid payment proof',
-          paymentRequired: true,
-        });
+
+      try {
+        await this.verifyPayment(payment, capabilityInfo);
+      } catch (error: any) {
+        const message = error.message || 'Payment verification failed';
+        res.status(error.statusCode || 402).json({ success: false, error: message, paymentRequired: true });
         return;
       }
 
       try {
         const result = await this.execute(capability, input);
-        
-        // Add x402 success headers
+
         res.set({
           'X-Payment-Received': 'true',
           'X-Payment-Status': payment.status,
           'X-Transaction-Id': payment.transactionId,
         });
-        
+
         res.json({ success: true, data: result, payment });
       } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });
@@ -143,6 +100,39 @@ class SummarizerAgent extends Agent {
     });
   }
 
+  private async verifyPayment(payment: any, capability: AgentCapability) {
+    if (!payment || !payment.transactionId) {
+      const err: any = new Error('Payment Required');
+      err.statusCode = 402;
+      throw err;
+    }
+
+    try {
+      const response = await axios.get(`${this.routerUrl}/payments/${payment.transactionId}`);
+      const paymentRecord = response.data;
+
+      if (paymentRecord.status !== 'completed') {
+        throw new Error('Payment not completed');
+      }
+
+      if (paymentRecord.to !== this.metadata.walletAddress) {
+        throw new Error('Payment destination mismatch');
+      }
+
+      if (paymentRecord.currency !== capability.pricing.currency) {
+        throw new Error('Payment currency mismatch');
+      }
+
+      if (Math.abs(paymentRecord.amount - capability.pricing.amount) > 0.0000001) {
+        throw new Error('Payment amount mismatch');
+      }
+    } catch (error: any) {
+      const err: any = new Error(error.response?.data?.error || error.message || 'Payment verification failed');
+      err.statusCode = 402;
+      throw err;
+    }
+  }
+
   async execute(capability: string, input: any): Promise<any> {
     if (capability === 'summarize') {
       return this.summarize(input);
@@ -151,24 +141,22 @@ class SummarizerAgent extends Agent {
   }
 
   private async summarize(input: { text: string; maxBullets?: number }): Promise<any> {
-    const text = typeof input === 'string' ? input : 
-                 (input.translatedText || input.text || JSON.stringify(input));
+    const text = typeof input === 'string' ? input : (input.translatedText || input.text || JSON.stringify(input));
     const maxBullets = input.maxBullets || 3;
 
-    // Try OpenAI first if available
     if (this.openaiClient) {
       try {
         const completion = await this.openaiClient.chat.completions.create({
-          model: "gpt-3.5-turbo",
+          model: 'gpt-3.5-turbo',
           messages: [
             {
-              role: "system",
-              content: `You are a summarization assistant. Create ${maxBullets} concise bullet points from the given text. Return ONLY the bullet points, one per line, without numbers or dashes.`
+              role: 'system',
+              content: `You are a summarization assistant. Create ${maxBullets} concise bullet points from the given text. Return ONLY the bullet points, one per line, without numbers or dashes.`,
             },
             {
-              role: "user",
-              content: text
-            }
+              role: 'user',
+              content: text,
+            },
           ],
           max_tokens: 150,
           temperature: 0.7,
@@ -192,7 +180,6 @@ class SummarizerAgent extends Agent {
       }
     }
 
-    // Fallback: Simple sentence extraction
     await new Promise(resolve => setTimeout(resolve, 400));
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
     const summary = sentences.slice(0, maxBullets).map(s => s.trim());
@@ -217,9 +204,15 @@ class SummarizerAgent extends Agent {
   }
 }
 
-// Start the agent
-const agent = new SummarizerAgent(3101);
-agent.startServer().catch(console.error);
+export async function startSummarizerAgent(port: number = 3101) {
+  const walletAddress = await getWalletAddress(SUMMARIZER_WALLET_NAME);
+  const agent = new SummarizerAgent(walletAddress, port);
+  await agent.startServer();
+  console.log(`📝 Summarizer Agent wallet: ${walletAddress}`);
+  return agent;
+}
+
+startSummarizerAgent().catch(console.error);
 
 export { SummarizerAgent };
 
