@@ -1,0 +1,35 @@
+{
+  "name": "agent-2-agent-infra",
+  "version": "1.0.0",
+  "description": "Agent-to-Agent Payment Router for Solana x402 Hackathon",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "npm install && npm run build",
+    "build": "npm run build --workspaces",
+    "dev": "concurrently \"npm run dev -w @a2a/registry\" \"npm run dev -w @a2a/router\"",
+    "demo": "node demo/run-demo.js",
+    "demo:chain": "node demo/chain-demo.js",
+    "verify": "node verify-setup.js",
+    "test": "echo \"Tests coming soon\" && exit 0",
+    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist"
+  },
+  "keywords": [
+    "solana",
+    "x402",
+    "ai-agents",
+    "payments",
+    "hackathon"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "concurrently": "^8.2.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
+
