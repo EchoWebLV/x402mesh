@@ -419,23 +419,25 @@ export function AgentChain() {
                 <h4 className="font-semibold text-gray-300 mb-2">💰 Payments:</h4>
                 <div className="space-y-2">
                   {results.payments.map((payment: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between bg-gray-800/50 rounded-lg p-3">
-                      <span className="text-gray-300">{payment.agent}</span>
-                      <div className="text-right">
-                        <div className="text-primary font-semibold">{payment.amount.toFixed(3)} SOL</div>
-                        <div className="text-xs text-gray-500">
-                          Tx: {payment.signature}
-                          {payment.explorerUrl && (
-                            <a 
-                              href={payment.explorerUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="ml-2 text-primary hover:underline"
-                            >
-                              ↗
-                            </a>
-                          )}
-                        </div>
+                    <div key={i} className="bg-gray-800/50 rounded-lg p-3 hover:bg-gray-800/70 transition-all">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-300 font-semibold">{payment.agent}</span>
+                        <div className="text-primary font-bold text-lg">{payment.amount.toFixed(3)} SOL</div>
+                      </div>
+                      <a 
+                        href={payment.explorerUrl || `https://explorer.solana.com/tx/${payment.transactionId}?cluster=devnet`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 hover:underline transition-colors group cursor-pointer"
+                      >
+                        <span>🔍</span>
+                        <span className="flex-1">
+                          {payment.explorerUrl ? 'View on Solana Explorer (Devnet)' : 'View Transaction Details'}
+                        </span>
+                        <span className="text-gray-500 group-hover:text-gray-400">↗</span>
+                      </a>
+                      <div className="text-xs text-gray-500 font-mono mt-1">
+                        Tx ID: {payment.signature || payment.transactionId}
                       </div>
                     </div>
                   ))}

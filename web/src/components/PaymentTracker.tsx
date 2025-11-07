@@ -173,20 +173,23 @@ export function PaymentTracker() {
                   </div>
                 </div>
                 
-                {(payment.signature || payment.explorerUrl) && (
-                  <div className="mt-2 pt-2 border-t border-gray-700">
-                    <a
-                      href={payment.explorerUrl || `https://explorer.solana.com/tx/${payment.signature}?cluster=devnet`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-gray-400 hover:text-primary transition-colors flex items-center gap-1"
-                    >
-                      <span>🔍</span>
-                      <span>View on Solana Explorer</span>
-                      {payment.signature && <span className="text-gray-600">• {payment.signature}</span>}
-                    </a>
-                  </div>
-                )}
+                <div className="mt-3 pt-3 border-t border-gray-700">
+                  <a
+                    href={payment.explorerUrl || `https://explorer.solana.com/tx/${payment.transactionId}?cluster=devnet`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 hover:underline transition-colors group cursor-pointer"
+                  >
+                    <span className="text-lg">🔍</span>
+                    <div className="flex-1">
+                      <div className="font-medium">View Transaction on Solana Explorer (Devnet)</div>
+                      <div className="text-xs text-gray-500 group-hover:text-gray-400 font-mono">
+                        Tx ID: {payment.signature || payment.transactionId}
+                      </div>
+                    </div>
+                    <span className="text-gray-500 group-hover:text-gray-400">↗</span>
+                  </a>
+                </div>
               </motion.div>
             ))
           )}
