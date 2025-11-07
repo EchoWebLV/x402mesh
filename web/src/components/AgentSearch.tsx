@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
+import { Search, Copy, X, Code, Terminal, Lightbulb, ExternalLink, Check } from 'lucide-react'
 
 const REGISTRY_BASE = process.env.NEXT_PUBLIC_REGISTRY_URL || 'http://localhost:3001'
 
@@ -34,6 +35,13 @@ export function AgentSearch() {
   const [allTags, setAllTags] = useState<string[]>([])
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [copiedText, setCopiedText] = useState<string | null>(null)
+
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedText(label)
+    setTimeout(() => setCopiedText(null), 2000)
+  }
 
   useEffect(() => {
     loadAgents()
@@ -93,31 +101,37 @@ export function AgentSearch() {
   return (
     <div className="space-y-6">
       {/* Search Header */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold mb-4">🔍 Discover Agents</h2>
+      <div className="rounded-lg p-6 border border-gray-900">
+        <div className="flex items-center gap-2 mb-4">
+          <Search className="w-5 h-5 text-gray-500" />
+          <h2 className="text-xl font-medium text-white">
+            Discover Agents
+          </h2>
+        </div>
         
         {/* Search Input */}
-        <div className="mb-4">
+        <div className="mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
           <input
             type="text"
-            placeholder="Search by name, capability, or description..."
+            placeholder="Search agents..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 rounded-md border border-gray-900 bg-black text-white placeholder-gray-600 focus:outline-none focus:border-gray-700 transition-colors text-sm"
           />
         </div>
 
         {/* Tag Filters */}
         {allTags.length > 0 && (
           <div>
-            <p className="text-sm text-gray-400 mb-2">Filter by tag:</p>
+            <p className="text-xs text-gray-600 mb-2">Filter by tag</p>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedTag(null)}
-                className={`px-3 py-1 rounded-full text-sm transition-all ${
+                className={`px-3 py-1 rounded-md text-xs transition-all border ${
                   selectedTag === null
-                    ? 'bg-primary text-dark font-semibold'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    ? 'bg-white text-black border-white'
+                    : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-700 hover:text-gray-400'
                 }`}
               >
                 All
@@ -126,10 +140,10 @@ export function AgentSearch() {
                 <button
                   key={tag}
                   onClick={() => setSelectedTag(tag)}
-                  className={`px-3 py-1 rounded-full text-sm transition-all ${
+                  className={`px-3 py-1 rounded-md text-xs transition-all border ${
                     selectedTag === tag
-                      ? 'bg-primary text-dark font-semibold'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      ? 'bg-white text-black border-white'
+                      : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-700 hover:text-gray-400'
                   }`}
                 >
                   {tag}
@@ -176,18 +190,22 @@ export function AgentSearch() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 hover:border-primary/50 transition-all"
+              onClick={() => {
+                setSelectedAgent(agent)
+                setShowModal(true)
+              }}
+              className="border border-gray-900 rounded-lg p-5 hover:border-gray-700 transition-all cursor-pointer"
             >
               {/* Agent Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold mb-1">{agent.name}</h3>
-                  <p className="text-sm text-gray-400">{agent.description}</p>
+                  <h3 className="text-base font-medium mb-1 text-white">{agent.name}</h3>
+                  <p className="text-sm text-gray-600">{agent.description}</p>
                 </div>
-                <div className={`px-2 py-1 rounded-full text-xs ${
+                <div className={`px-2 py-0.5 rounded text-xs ${
                   agent.status === 'active'
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-gray-500/20 text-gray-400'
+                    ? 'bg-gray-900 text-gray-500'
+                    : 'bg-gray-900 text-gray-600'
                 }`}>
                   {agent.status}
                 </div>
@@ -195,18 +213,18 @@ export function AgentSearch() {
 
               {/* Capabilities */}
               <div className="mb-3">
-                <p className="text-xs text-gray-500 mb-2">Capabilities:</p>
+                <p className="text-xs text-gray-600 mb-2">Capabilities</p>
                 <div className="space-y-1">
                   {agent.capabilities.slice(0, 2).map((cap, i) => (
                     <div key={i} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-300">{cap.name}</span>
-                      <span className="text-primary font-semibold">
+                      <span className="text-gray-400">{cap.name}</span>
+                      <span className="text-gray-500 text-xs">
                         {cap.pricing.amount} {cap.pricing.currency}
                       </span>
                     </div>
                   ))}
                   {agent.capabilities.length > 2 && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-600">
                       +{agent.capabilities.length - 2} more
                     </p>
                   )}
@@ -220,9 +238,9 @@ export function AgentSearch() {
                     {agent.tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-1 bg-gray-700/50 text-gray-400 rounded text-xs"
+                        className="px-2 py-0.5 bg-gray-900 text-gray-600 rounded text-xs"
                       >
-                        #{tag}
+                        {tag}
                       </span>
                     ))}
                   </div>
@@ -230,20 +248,15 @@ export function AgentSearch() {
               )}
 
               {/* Footer */}
-              <div className="pt-3 border-t border-gray-700">
+              <div className="pt-3 border-t border-gray-900">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">
+                  <span className="text-gray-600">
                     {agent.walletAddress.slice(0, 6)}...{agent.walletAddress.slice(-4)}
                   </span>
-                  <button
-                    onClick={() => {
-                      setSelectedAgent(agent)
-                      setShowModal(true)
-                    }}
-                    className="text-blue-400 hover:text-blue-300 transition-colors font-semibold"
-                  >
-                    View API Docs 📖
-                  </button>
+                  <span className="text-gray-500 flex items-center gap-1">
+                    View docs
+                    <ExternalLink className="w-3 h-3" />
+                  </span>
                 </div>
               </div>
             </motion.div>
@@ -262,7 +275,7 @@ export function AgentSearch() {
           <div className="text-primary">npm install -g @x402mesh/cli</div>
           <div className="text-gray-400 mt-2"># Register your agent</div>
           <div className="text-primary">
-            x402 register --name "Your Agent" --endpoint https://your-api.com --wallet ABC...
+            x402mesh register --name "Your Agent" --endpoint https://your-api.com --wallet ABC...
           </div>
         </div>
       </div>

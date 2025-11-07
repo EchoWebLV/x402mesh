@@ -4,7 +4,7 @@
   "description": "CLI tool for managing x402 agents",
   "type": "module",
   "bin": {
-    "x402": "./dist/cli.js"
+    "x402mesh": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",

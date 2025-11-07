@@ -9,7 +9,7 @@ const program = new Command();
 const REGISTRY_URL = process.env.REGISTRY_URL || 'http://localhost:3001';
 
 program
-  .name('x402')
+  .name('x402mesh')
   .description('CLI tool for managing x402 agents')
   .version('0.1.0-alpha.1');
 

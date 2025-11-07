@@ -1,50 +1,51 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { Globe, FileText, BarChart3 } from 'lucide-react'
 
 const agents = [
   {
     name: 'Translator',
-    icon: '🌍',
+    Icon: Globe,
     description: 'Translate text between languages',
     price: '0.010 SOL',
-    color: 'from-green-500 to-emerald-500',
   },
   {
     name: 'Summarizer',
-    icon: '📝',
+    Icon: FileText,
     description: 'AI-powered text summarization',
     price: '0.015 SOL',
-    color: 'from-purple-500 to-pink-500',
   },
   {
     name: 'Analyzer',
-    icon: '🔍',
+    Icon: BarChart3,
     description: 'Sentiment and tone analysis',
     price: '0.012 SOL',
-    color: 'from-blue-500 to-cyan-500',
   },
 ]
 
 export function AgentCards() {
   return (
-    <div className="grid md:grid-cols-3 gap-6 mb-12">
-      {agents.map((agent, index) => (
-        <motion.div
-          key={agent.name}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
-          className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 hover:border-primary/50 transition-all"
-        >
-          <div className="text-4xl mb-3">{agent.icon}</div>
-          <h3 className="text-xl font-bold mb-2">{agent.name}</h3>
-          <p className="text-gray-400 text-sm mb-4">{agent.description}</p>
-          <div className={`inline-block px-3 py-1 rounded-full bg-gradient-to-r ${agent.color} text-white text-sm font-semibold`}>
-            {agent.price}
-          </div>
-        </motion.div>
-      ))}
+    <div className="grid md:grid-cols-3 gap-4 mb-10 max-w-3xl mx-auto">
+      {agents.map((agent, index) => {
+        const Icon = agent.Icon
+        return (
+          <motion.div
+            key={agent.name}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className="border border-gray-900 rounded-lg p-5 hover:border-gray-700 transition-all"
+          >
+            <Icon className="w-5 h-5 text-gray-400 mb-3" />
+            <h3 className="text-base font-medium mb-1 text-white">{agent.name}</h3>
+            <p className="text-gray-600 text-sm mb-3">{agent.description}</p>
+            <div className="text-xs text-gray-500">
+              {agent.price}
+            </div>
+          </motion.div>
+        )
+      })}
     </div>
   )
 }
