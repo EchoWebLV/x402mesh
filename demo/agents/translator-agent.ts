@@ -1,10 +1,8 @@
 import 'dotenv/config';
-import express from 'express';
-import axios from 'axios';
-import { Agent, AgentCapability } from '../../packages/sdk/src/agent.js';
+import { Agent } from '../../packages/sdk/src/agent.js';
+import { AgentCapability } from '../../packages/sdk/src/types.js';
 import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
 
-const ROUTER_URL = process.env.ROUTER_URL || 'http://localhost:3002';
 const TRANSLATOR_WALLET_NAME = process.env.TRANSLATOR_WALLET || 'TranslatorWallet';
 
 class TranslatorAgent extends Agent {
