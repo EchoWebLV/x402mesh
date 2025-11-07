@@ -350,3 +350,4 @@ await connection.confirmTransaction(signature, 'confirmed');
 
 This is not a simulation. Every transaction can be verified on-chain.
 
+

@@ -1,6 +1,6 @@
 {
   "name": "@x402mesh/registry",
-  "version": "1.0.0",
+  "version": "0.1.0-alpha.1",
   "description": "Agent Discovery Registry Service",
   "type": "module",
   "main": "./dist/index.js",

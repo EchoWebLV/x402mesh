@@ -1,6 +1,6 @@
 {
   "name": "@x402mesh/sdk",
-  "version": "1.0.0",
+  "version": "0.1.0-alpha.1",
   "description": "SDK for building AI agents with payment capabilities",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "agent-2-agent-infra",
-  "version": "1.0.0",
+  "version": "0.1.0-alpha.1",
   "description": "Agent-to-Agent Payment Router for Solana x402 Hackathon",
   "private": true,
   "workspaces": [
