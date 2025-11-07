@@ -17,9 +17,9 @@ app.get('/health', (req, res) => {
 });
 
 // Register an agent
-app.post('/agents/register', (req, res) => {
+app.post('/agents/register', async (req, res) => {
   try {
-    const result = registry.register(req.body);
+    const result = await registry.register(req.body);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -27,9 +27,9 @@ app.post('/agents/register', (req, res) => {
 });
 
 // Discover agents
-app.get('/agents/discover', (req, res) => {
+app.get('/agents/discover', async (req, res) => {
   const { tags, capability, name } = req.query;
-  const agents = registry.discover({
+  const agents = await registry.discover({
     tags: tags ? (tags as string).split(',') : undefined,
     capability: capability as string,
     name: name as string,
@@ -38,9 +38,9 @@ app.get('/agents/discover', (req, res) => {
 });
 
 // Get specific agent
-app.get('/agents/:agentId', (req, res) => {
+app.get('/agents/:agentId', async (req, res) => {
   try {
-    const agent = registry.getAgent(req.params.agentId);
+    const agent = await registry.getAgent(req.params.agentId);
     res.json(agent);
   } catch (error: any) {
     res.status(404).json({ error: error.message });
@@ -48,9 +48,9 @@ app.get('/agents/:agentId', (req, res) => {
 });
 
 // Update agent
-app.put('/agents/:agentId', (req, res) => {
+app.put('/agents/:agentId', async (req, res) => {
   try {
-    registry.updateAgent(req.params.agentId, req.body);
+    await registry.updateAgent(req.params.agentId, req.body);
     res.json({ success: true });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -58,9 +58,9 @@ app.put('/agents/:agentId', (req, res) => {
 });
 
 // Deregister agent
-app.delete('/agents/:agentId', (req, res) => {
+app.delete('/agents/:agentId', async (req, res) => {
   try {
-    registry.deregister(req.params.agentId);
+    await registry.deregister(req.params.agentId);
     res.json({ success: true });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -68,9 +68,9 @@ app.delete('/agents/:agentId', (req, res) => {
 });
 
 // Heartbeat
-app.post('/agents/:agentId/heartbeat', (req, res) => {
+app.post('/agents/:agentId/heartbeat', async (req, res) => {
   try {
-    registry.heartbeat(req.params.agentId);
+    await registry.heartbeat(req.params.agentId);
     res.json({ success: true });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -78,14 +78,14 @@ app.post('/agents/:agentId/heartbeat', (req, res) => {
 });
 
 // List all agents
-app.get('/agents', (req, res) => {
-  const agents = registry.listAll();
+app.get('/agents', async (req, res) => {
+  const agents = await registry.listAll();
   res.json(agents);
 });
 
 // Get registry stats
-app.get('/stats', (req, res) => {
-  const stats = registry.getStats();
+app.get('/stats', async (req, res) => {
+  const stats = await registry.getStats();
   res.json(stats);
 });
 

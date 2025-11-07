@@ -1,3 +1,5 @@
+import { query as dbQuery, initializeDatabase } from './db.js';
+
 interface AgentCapability {
   name: string;
   description: string;
@@ -26,134 +28,265 @@ interface AgentMetadata {
 }
 
 export class AgentRegistry {
-  private agents: Map<string, AgentMetadata> = new Map();
   private readonly HEARTBEAT_TIMEOUT = 60000; // 60 seconds
+  private initialized: boolean = false;
 
   constructor() {
+    // Initialize database on first use
+    this.initialize();
+    
     // Clean up inactive agents every minute
     setInterval(() => this.cleanupInactiveAgents(), 60000);
   }
 
-  register(metadata: AgentMetadata): { success: boolean; agentId: string } {
+  private async initialize() {
+    if (this.initialized) return;
+    
+    try {
+      await initializeDatabase();
+      this.initialized = true;
+    } catch (error) {
+      console.error('Failed to initialize database:', error);
+      console.warn('⚠️  Falling back to in-memory storage (data will be lost on restart)');
+    }
+  }
+
+  async register(metadata: AgentMetadata): Promise<{ success: boolean; agentId: string }> {
     if (!metadata.id || !metadata.name || !metadata.walletAddress) {
       throw new Error('Missing required fields: id, name, walletAddress');
     }
 
-    const agent: AgentMetadata = {
-      ...metadata,
-      createdAt: metadata.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastHeartbeat: new Date().toISOString(),
-      status: 'active',
-    };
+    try {
+      await dbQuery(
+        `INSERT INTO agents (id, name, description, version, endpoint, wallet_address, capabilities, tags, status, created_at, updated_at, last_heartbeat)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), NOW())
+         ON CONFLICT (id) 
+         DO UPDATE SET 
+           name = $2,
+           description = $3,
+           version = $4,
+           endpoint = $5,
+           wallet_address = $6,
+           capabilities = $7,
+           tags = $8,
+           updated_at = NOW(),
+           last_heartbeat = NOW(),
+           status = 'active'`,
+        [
+          metadata.id,
+          metadata.name,
+          metadata.description || '',
+          metadata.version || '1.0.0',
+          metadata.endpoint,
+          metadata.walletAddress,
+          JSON.stringify(metadata.capabilities),
+          metadata.tags || [],
+          'active'
+        ]
+      );
 
-    this.agents.set(metadata.id, agent);
-    console.log(`✅ Registered agent: ${metadata.name} (${metadata.id})`);
-    
-    return { success: true, agentId: metadata.id };
+      console.log(`✅ Registered agent: ${metadata.name} (${metadata.id})`);
+      return { success: true, agentId: metadata.id };
+    } catch (error) {
+      console.error('Failed to register agent:', error);
+      throw error;
+    }
   }
 
-  discover(query?: {
+  async discover(query?: {
     tags?: string[];
     capability?: string;
     name?: string;
-  }): AgentMetadata[] {
-    let results = Array.from(this.agents.values());
+  }): Promise<AgentMetadata[]> {
+    try {
+      let queryText = `SELECT * FROM agents WHERE status = 'active'`;
+      const params: any[] = [];
+      let paramIndex = 1;
 
-    // Filter by status (only active agents)
-    results = results.filter(agent => agent.status === 'active');
-
-    if (query?.tags && query.tags.length > 0) {
-      results = results.filter(agent =>
-        agent.tags?.some(tag => query.tags!.includes(tag))
-      );
-    }
-
-    if (query?.capability) {
-      results = results.filter(agent =>
-        agent.capabilities.some(cap => 
-          cap.name.toLowerCase().includes(query.capability!.toLowerCase())
-        )
-      );
-    }
-
-    if (query?.name) {
-      results = results.filter(agent =>
-        agent.name.toLowerCase().includes(query.name!.toLowerCase())
-      );
-    }
-
-    return results;
-  }
-
-  getAgent(agentId: string): AgentMetadata {
-    const agent = this.agents.get(agentId);
-    if (!agent) {
-      throw new Error(`Agent not found: ${agentId}`);
-    }
-    return agent;
-  }
-
-  updateAgent(agentId: string, updates: Partial<AgentMetadata>): void {
-    const agent = this.getAgent(agentId);
-    const updated = {
-      ...agent,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
-    this.agents.set(agentId, updated);
-  }
-
-  deregister(agentId: string): void {
-    if (!this.agents.has(agentId)) {
-      throw new Error(`Agent not found: ${agentId}`);
-    }
-    this.agents.delete(agentId);
-    console.log(`❌ Deregistered agent: ${agentId}`);
-  }
-
-  heartbeat(agentId: string): void {
-    const agent = this.getAgent(agentId);
-    agent.lastHeartbeat = new Date().toISOString();
-    agent.status = 'active';
-    this.agents.set(agentId, agent);
-  }
-
-  listAll(): AgentMetadata[] {
-    return Array.from(this.agents.values());
-  }
-
-  getStats() {
-    const agents = Array.from(this.agents.values());
-    return {
-      total: agents.length,
-      active: agents.filter(a => a.status === 'active').length,
-      inactive: agents.filter(a => a.status === 'inactive').length,
-      byTag: this.getTagStats(agents),
-    };
-  }
-
-  private getTagStats(agents: AgentMetadata[]) {
-    const stats: Record<string, number> = {};
-    agents.forEach(agent => {
-      agent.tags?.forEach(tag => {
-        stats[tag] = (stats[tag] || 0) + 1;
-      });
-    });
-    return stats;
-  }
-
-  private cleanupInactiveAgents(): void {
-    const now = Date.now();
-    this.agents.forEach((agent, id) => {
-      if (agent.lastHeartbeat) {
-        const lastBeat = new Date(agent.lastHeartbeat).getTime();
-        if (now - lastBeat > this.HEARTBEAT_TIMEOUT) {
-          agent.status = 'inactive';
-          console.log(`⚠️  Agent marked inactive: ${agent.name} (${id})`);
-        }
+      // Filter by tags
+      if (query?.tags && query.tags.length > 0) {
+        queryText += ` AND tags && $${paramIndex}`;
+        params.push(query.tags);
+        paramIndex++;
       }
-    });
+
+      // Filter by capability (search in JSONB)
+      if (query?.capability) {
+        queryText += ` AND capabilities::text ILIKE $${paramIndex}`;
+        params.push(`%${query.capability}%`);
+        paramIndex++;
+      }
+
+      // Filter by name
+      if (query?.name) {
+        queryText += ` AND name ILIKE $${paramIndex}`;
+        params.push(`%${query.name}%`);
+        paramIndex++;
+      }
+
+      queryText += ` ORDER BY created_at DESC`;
+
+      const result = await dbQuery(queryText, params);
+      
+      return result.rows.map((row: any) => this.rowToAgent(row));
+    } catch (error) {
+      console.error('Failed to discover agents:', error);
+      return [];
+    }
+  }
+
+  async getAgent(agentId: string): Promise<AgentMetadata> {
+    try {
+      const result = await dbQuery(
+        `SELECT * FROM agents WHERE id = $1`,
+        [agentId]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error(`Agent not found: ${agentId}`);
+      }
+
+      return this.rowToAgent(result.rows[0]);
+    } catch (error) {
+      console.error('Failed to get agent:', error);
+      throw error;
+    }
+  }
+
+  async updateAgent(agentId: string, updates: Partial<AgentMetadata>): Promise<void> {
+    try {
+      const fields: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      if (updates.name) {
+        fields.push(`name = $${paramIndex++}`);
+        values.push(updates.name);
+      }
+      if (updates.description) {
+        fields.push(`description = $${paramIndex++}`);
+        values.push(updates.description);
+      }
+      if (updates.version) {
+        fields.push(`version = $${paramIndex++}`);
+        values.push(updates.version);
+      }
+      if (updates.endpoint) {
+        fields.push(`endpoint = $${paramIndex++}`);
+        values.push(updates.endpoint);
+      }
+      if (updates.capabilities) {
+        fields.push(`capabilities = $${paramIndex++}`);
+        values.push(JSON.stringify(updates.capabilities));
+      }
+      if (updates.tags) {
+        fields.push(`tags = $${paramIndex++}`);
+        values.push(updates.tags);
+      }
+
+      fields.push(`updated_at = NOW()`);
+      values.push(agentId);
+
+      await dbQuery(
+        `UPDATE agents SET ${fields.join(', ')} WHERE id = $${paramIndex}`,
+        values
+      );
+    } catch (error) {
+      console.error('Failed to update agent:', error);
+      throw error;
+    }
+  }
+
+  async deregister(agentId: string): Promise<void> {
+    try {
+      const result = await dbQuery(
+        `DELETE FROM agents WHERE id = $1`,
+        [agentId]
+      );
+
+      if (result.rowCount === 0) {
+        throw new Error(`Agent not found: ${agentId}`);
+      }
+
+      console.log(`❌ Deregistered agent: ${agentId}`);
+    } catch (error) {
+      console.error('Failed to deregister agent:', error);
+      throw error;
+    }
+  }
+
+  async heartbeat(agentId: string): Promise<void> {
+    try {
+      await dbQuery(
+        `UPDATE agents 
+         SET last_heartbeat = NOW(), status = 'active' 
+         WHERE id = $1`,
+        [agentId]
+      );
+    } catch (error) {
+      console.error('Failed to update heartbeat:', error);
+      throw error;
+    }
+  }
+
+  async listAll(): Promise<AgentMetadata[]> {
+    try {
+      const result = await dbQuery(`SELECT * FROM agents ORDER BY created_at DESC`);
+      return result.rows.map((row: any) => this.rowToAgent(row));
+    } catch (error) {
+      console.error('Failed to list agents:', error);
+      return [];
+    }
+  }
+
+  async getStats() {
+    try {
+      const totalResult = await dbQuery(`SELECT COUNT(*) as count FROM agents`);
+      const activeResult = await dbQuery(`SELECT COUNT(*) as count FROM agents WHERE status = 'active'`);
+      const inactiveResult = await dbQuery(`SELECT COUNT(*) as count FROM agents WHERE status = 'inactive'`);
+
+      return {
+        total: parseInt(totalResult.rows[0].count),
+        active: parseInt(activeResult.rows[0].count),
+        inactive: parseInt(inactiveResult.rows[0].count),
+      };
+    } catch (error) {
+      console.error('Failed to get stats:', error);
+      return { total: 0, active: 0, inactive: 0 };
+    }
+  }
+
+  private async cleanupInactiveAgents(): Promise<void> {
+    try {
+      const timeout = new Date(Date.now() - this.HEARTBEAT_TIMEOUT);
+      
+      await dbQuery(
+        `UPDATE agents 
+         SET status = 'inactive' 
+         WHERE last_heartbeat < $1 AND status = 'active'`,
+        [timeout]
+      );
+    } catch (error) {
+      console.error('Failed to cleanup inactive agents:', error);
+    }
+  }
+
+  private rowToAgent(row: any): AgentMetadata {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      version: row.version,
+      endpoint: row.endpoint,
+      walletAddress: row.wallet_address,
+      capabilities: typeof row.capabilities === 'string' 
+        ? JSON.parse(row.capabilities) 
+        : row.capabilities,
+      tags: row.tags || [],
+      status: row.status,
+      createdAt: row.created_at?.toISOString(),
+      updatedAt: row.updated_at?.toISOString(),
+      lastHeartbeat: row.last_heartbeat?.toISOString(),
+    };
   }
 }
-
