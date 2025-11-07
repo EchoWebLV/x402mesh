@@ -1,5 +1,5 @@
 {
-  "name": "@a2a/router",
+  "name": "@x402mesh/router",
   "version": "1.0.0",
   "description": "Payment Router Service with x402 support",
   "type": "module",

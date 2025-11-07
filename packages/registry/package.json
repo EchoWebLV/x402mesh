@@ -1,5 +1,5 @@
 {
-  "name": "@a2a/registry",
+  "name": "@x402mesh/registry",
   "version": "1.0.0",
   "description": "Agent Discovery Registry Service",
   "type": "module",

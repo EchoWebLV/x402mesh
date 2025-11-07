@@ -362,7 +362,7 @@ import {
   Agent, 
   RegistryClient, 
   PaymentClient 
-} from '@a2a/sdk';
+} from '@x402mesh/sdk';
 
 // Registry Client
 const registry = new RegistryClient('http://localhost:3001');

@@ -16,8 +16,8 @@
     "fund:mint": "bash scripts/fund-mint-authority.sh",
     "check:balances": "bash scripts/check-balances.sh",
     "build": "npm run build:core && npm run web:build",
-    "build:core": "npm run build -w @a2a/registry -w @a2a/router -w @a2a/sdk",
-    "dev": "concurrently \"npm run dev -w @a2a/registry\" \"npm run dev -w @a2a/router\"",
+    "build:core": "npm run build -w @x402mesh/registry -w @x402mesh/router -w @x402mesh/sdk",
+    "dev": "concurrently \"npm run dev -w @x402mesh/registry\" \"npm run dev -w @x402mesh/router\"",
     "start:all": "bash scripts/start-all.sh",
     "start:backend": "npm run start:all",
     "web": "cd web && npm install && npm run dev",
@@ -30,6 +30,7 @@
     "test": "npm run test:integration && npm run test:e2e",
     "test:integration": "bash tests/integration-test.sh",
     "test:e2e": "bash tests/e2e-chain-test.sh",
+    "test:sdk": "npm run test -w @a2a/sdk",
     "test:all": "npm run test:integration && npm run test:e2e",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist web/node_modules web/.next"
   },

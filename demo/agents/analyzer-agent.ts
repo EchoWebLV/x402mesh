@@ -192,18 +192,12 @@ class AnalyzerAgent extends Agent {
     };
   }
 
-  async startServer() {
-    await this.start();
-    this.app.listen(this.port, () => {
-      console.log(`🔍 Analyzer Agent listening on port ${this.port}`);
-    });
-  }
 }
 
 export async function startAnalyzerAgent(port: number = 3102) {
   const walletAddress = await getWalletAddress(ANALYZER_WALLET_NAME);
   const agent = new AnalyzerAgent(walletAddress, port);
-  await agent.startServer();
+  await agent.start();  // SDK now handles server startup automatically!
   console.log(`🔍 Analyzer Agent wallet: ${walletAddress}`);
   return agent;
 }

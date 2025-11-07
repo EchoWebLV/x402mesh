@@ -50,7 +50,7 @@
                    └──────────────┼────────────────┘
                                   │
                     ┌─────────────▼─────────────┐
-                    │    @a2a/sdk (npm pkg)     │
+                    │    @x402mesh/sdk (npm pkg)     │
                     │  ┌────────────────────┐   │
                     │  │ Agent Class        │   │
                     │  │ RegistryClient     │   │
@@ -91,7 +91,7 @@
 │  3. Build packages    → npm run build                                   │
 │  4. Start services    → npm run start:all                               │
 │  5. Create agent      → Manually write TypeScript                       │
-│  6. Import SDK        → import { Agent } from '@a2a/sdk'                │
+│  6. Import SDK        → import { Agent } from '@x402mesh/sdk'                │
 │  7. Run agent         → npx tsx my-agent.ts                             │
 │  8. Test in UI        → Open localhost:3000                             │
 │                                                                          │
@@ -140,7 +140,7 @@
             │                      │                      │
             ▼                      ▼                      ▼
     ┌─────────────┐      ┌─────────────────┐    ┌────────────────┐
-    │  @a2a/sdk   │      │  @a2a/templates │    │  @a2a/cli      │
+    │  @x402mesh/sdk   │      │  @x402mesh/templates │    │  @x402mesh/cli      │
     │             │      │                 │    │                │
     │ • Agent     │      │ • weather       │    │ • Generator    │
     │ • Registry  │      │ • translator    │    │ • Deployer     │
@@ -182,7 +182,7 @@
 │  DEVELOPER WORKFLOW (Future)                                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  1. Install CLI        → npm install -g @a2a/cli                        │
+│  1. Install CLI        → npm install -g @x402mesh/cli                        │
 │  2. Browse templates   → a2a templates                                  │
 │  3. Create agent       → a2a create my-weather-agent --template=weather │
 │     ├── Auto-generates files                                            │
@@ -225,18 +225,18 @@
 │  CURRENT (Minimal)              FUTURE (Full Ecosystem)            │
 │  ─────────────────              ──────────────────────             │
 │                                                                     │
-│  @a2a/sdk              →        @a2a/sdk                           │
-│  @a2a/registry         →        @a2a/registry                      │
-│  @a2a/router           →        @a2a/router                        │
-│  @a2a/web              →        @a2a/web                           │
+│  @x402mesh/sdk              →        @x402mesh/sdk                           │
+│  @x402mesh/registry         →        @x402mesh/registry                      │
+│  @x402mesh/router           →        @x402mesh/router                        │
+│  @x402mesh/web              →        @x402mesh/web                           │
 │                                                                     │
-│                         NEW →   @a2a/cli                           │
-│                         NEW →   @a2a/create-agent                  │
-│                         NEW →   @a2a/templates                     │
-│                         NEW →   @a2a/deployer                      │
-│                         NEW →   @a2a/marketplace                   │
-│                         NEW →   @a2a/analytics                     │
-│                         NEW →   @a2a/monitoring                    │
+│                         NEW →   @x402mesh/cli                           │
+│                         NEW →   @x402mesh/create-agent                  │
+│                         NEW →   @x402mesh/templates                     │
+│                         NEW →   @x402mesh/deployer                      │
+│                         NEW →   @x402mesh/marketplace                   │
+│                         NEW →   @x402mesh/analytics                     │
+│                         NEW →   @x402mesh/monitoring                    │
 │                                                                     │
 │  COMMUNITY PACKAGES:                                               │
 │                         NEW →   @mycompany/weather-agent           │
@@ -288,14 +288,14 @@
 
 ```
 Phase 1: Current State (✅ DONE)
-├── SDK (@a2a/sdk)
+├── SDK (@x402mesh/sdk)
 ├── Registry service
 ├── Payment router
 ├── Web UI
 └── Demo agents
 
 Phase 2: CLI Foundation (🔨 Next)
-├── @a2a/cli package
+├── @x402mesh/cli package
 │   ├── a2a create
 │   ├── a2a deploy
 │   ├── a2a discover

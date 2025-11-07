@@ -1,45 +1,10 @@
 import 'dotenv/config';
-import express from 'express';
-import axios from 'axios';
 import { Agent, AgentCapability } from '../../packages/sdk/src/agent.js';
 import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
 
-const ROUTER_URL = process.env.ROUTER_URL || 'http://localhost:3002';
 const TRANSLATOR_WALLET_NAME = process.env.TRANSLATOR_WALLET || 'TranslatorWallet';
 
 class TranslatorAgent extends Agent {
-  constructor(walletAddress: string, port: number = 3100) {
-    const capabilities: AgentCapability[] = [
-      {
-        name: 'translate',
-        description: 'Translate text between languages',
-        inputSchema: { text: 'string', targetLanguage: 'string' },
-        outputSchema: { translatedText: 'string', language: 'string' },
-        pricing: {
-          amount: 0.01,
-          currency: 'SOL',
-          model: 'per_request',
-        },
-      },
-    ];
-
-    super({
-      name: 'Translator Agent',
-      description: 'Translates text between multiple languages',
-      version: '1.0.0',
-      capabilities,
-      walletAddress,
-      port,
-      tags: ['translation', 'language', 'nlp'],
-    });
-    // ✅ SDK now automatically handles:
-    // - Express app creation
-    // - /execute endpoint with x402 payment handling
-    // - /health endpoint
-    // - Payment verification
-    // - Server startup
-  }
-
   // This is the ONLY method you need to implement!
   async execute(capability: string, input: any): Promise<any> {
     if (capability === 'translate') {
@@ -102,13 +67,30 @@ class TranslatorAgent extends Agent {
       originalText: input.text,
     };
   }
-
 }
 
 export async function startTranslatorAgent(port: number = 3100) {
   const walletAddress = await getWalletAddress(TRANSLATOR_WALLET_NAME);
-  const agent = new TranslatorAgent(walletAddress, port);
-  await agent.start();  // SDK now handles server startup automatically!
+  
+  const agent = new TranslatorAgent({
+    name: 'Translator Agent',
+    description: 'Translates text between multiple languages',
+    version: '1.0.0',
+    capabilities: [
+      {
+        name: 'translate',
+        description: 'Translate text between languages',
+        inputSchema: { text: 'string', targetLanguage: 'string' },
+        outputSchema: { translatedText: 'string', language: 'string' },
+        pricing: { amount: 0.01, currency: 'SOL', model: 'per_request' },
+      },
+    ],
+    walletAddress,
+    port,
+    tags: ['translation', 'language', 'nlp'],
+  });
+  
+  await agent.start();  // ✅ SDK handles everything automatically!
   console.log(`🌍 Translator Agent wallet: ${walletAddress}`);
   return agent;
 }

@@ -31,7 +31,7 @@ This will:
 
 ```typescript
 // my-agent.ts
-import { Agent, AgentCapability } from '@a2a/sdk';
+import { Agent, AgentCapability } from '@x402mesh/sdk';
 import express from 'express';
 
 class WeatherAgent extends Agent {
@@ -126,7 +126,7 @@ npx tsx my-agent.ts
 ### Step 3: Call Your Agent
 
 ```typescript
-import { RegistryClient, PaymentClient } from '@a2a/sdk';
+import { RegistryClient, PaymentClient } from '@x402mesh/sdk';
 
 const registry = new RegistryClient('http://localhost:3001');
 const paymentRouter = new PaymentClient('http://localhost:3002');

@@ -108,7 +108,7 @@ payment router, developer SDK, and working demo agents.
 ✅ Clean, maintainable code  
 
 ### Developer Experience
-✅ Simple SDK (`npm install @a2a/sdk`)  
+✅ Simple SDK (`npm install @x402mesh/sdk`)  
 ✅ One command demo (`npm run demo:chain`)  
 ✅ Clear API documentation  
 ✅ Example agents included  

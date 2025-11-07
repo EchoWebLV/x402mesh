@@ -221,18 +221,12 @@ class SummarizerAgent extends Agent {
     };
   }
 
-  async startServer() {
-    await this.start();
-    this.app.listen(this.port, () => {
-      console.log(`📝 Summarizer Agent listening on port ${this.port}`);
-    });
-  }
 }
 
 export async function startSummarizerAgent(port: number = 3101) {
   const walletAddress = await getWalletAddress(SUMMARIZER_WALLET_NAME);
   const agent = new SummarizerAgent(walletAddress, port);
-  await agent.startServer();
+  await agent.start();  // SDK now handles server startup automatically!
   console.log(`📝 Summarizer Agent wallet: ${walletAddress}`);
   return agent;
 }
