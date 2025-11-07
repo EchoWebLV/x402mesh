@@ -58,19 +58,45 @@ class TranslatorAgent extends Agent {
         return;
       }
 
+      // Check for x402 payment
       try {
         await this.verifyPayment(payment, capabilityInfo);
       } catch (error: any) {
         const message = error.message || 'Payment verification failed';
-        res.status(error.statusCode || 402).json({ success: false, error: message, paymentRequired: true });
-        return;
+        
+        // Return standard x402 402 Payment Required response
+        const priceInSmallestUnits = capabilityInfo.pricing.currency === 'SOL'
+          ? Math.floor(capabilityInfo.pricing.amount * 1_000_000_000)
+          : Math.floor(capabilityInfo.pricing.amount * 1_000_000);
+        
+        return res.status(error.statusCode || 402).json({ 
+          error: message,
+          paymentRequired: true,
+          payment: {
+            x402Version: 1,
+            scheme: 'exact',
+            network: 'solana-devnet',
+            recipient: this.metadata.walletAddress,
+            amount: priceInSmallestUnits,
+            memo: `Payment for ${capability}`
+          }
+        });
       }
 
       try {
         const result = await this.execute(capability, input);
 
+        // Standard x402 success headers
+        const paymentResponseHeader = Buffer.from(JSON.stringify({
+          x402Version: 1,
+          verified: true,
+          signature: payment.signature || payment.transactionId,
+          timestamp: new Date().toISOString()
+        })).toString('base64');
+
         res.set({
-          'X-Payment-Received': 'true',
+          'X-PAYMENT-RESPONSE': paymentResponseHeader,
+          'X-Payment-Received': 'true',  // Keep for backward compat
           'X-Payment-Status': payment.status,
           'X-Transaction-Id': payment.transactionId,
         });

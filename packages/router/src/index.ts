@@ -128,7 +128,13 @@ app.post('/payments/process', async (req, res) => {
   }
 });
 
-// Get payment status
+// Get payment history - MUST come before /payments/:transactionId
+app.get('/payments/history', (req, res) => {
+  const history = router.getPaymentHistory();
+  res.json(history);
+});
+
+// Get payment status - MUST come after specific routes like /payments/history
 app.get('/payments/:transactionId', (req, res) => {
   try {
     const payment = router.getPayment(req.params.transactionId);
@@ -273,14 +279,8 @@ app.post('/payments/split', async (req, res) => {
   }
 });
 
-// Get payment history
+// Get all payments
 app.get('/payments', (req, res) => {
-  const history = router.getPaymentHistory();
-  res.json(history);
-});
-
-// Get payment history (alias for web UI)
-app.get('/payments/history', (req, res) => {
   const history = router.getPaymentHistory();
   res.json(history);
 });

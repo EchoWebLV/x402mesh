@@ -1,3 +1,33 @@
+// x402 Protocol Standard Types
+export interface X402PaymentRequirements {
+  x402Version: 1;
+  scheme: 'exact' | 'upto';
+  network: 'solana-devnet' | 'solana-mainnet';
+  recipient: string;  // Wallet address
+  amount: number;     // In smallest units (lamports for SOL, microUSDC for USDC)
+  token?: string;     // SPL token mint address (optional, SOL if omitted)
+  memo?: string;
+  deadline?: number;  // Unix timestamp
+}
+
+export interface X402PaymentProof {
+  x402Version: 1;
+  scheme: 'exact';
+  network: string;
+  payload: {
+    serializedTransaction: string;  // base64-encoded signed transaction
+  };
+}
+
+export interface X402PaymentResponse {
+  x402Version: 1;
+  verified: true;
+  signature: string;
+  timestamp: string;
+  amount?: number;
+  explorerUrl?: string;
+}
+
 export interface AgentCapability {
   name: string;
   description: string;
@@ -31,6 +61,8 @@ export interface PaymentRequest {
   serviceId: string;
   metadata?: any;
   transactionSignature?: string;
+  // x402 standard fields
+  x402Proof?: X402PaymentProof;  // Standard x402 payment proof
 }
 
 export interface PaymentResponse {

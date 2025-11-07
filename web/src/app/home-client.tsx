@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { AgentChain } from '@/components/AgentChain'
 import { PaymentTracker } from '@/components/PaymentTracker'
 import { AgentCards } from '@/components/AgentCards'
@@ -24,7 +25,7 @@ export default function HomeClient() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <ConnectWalletButton />
+              <WalletMultiButton className="!bg-primary hover:!bg-primary/80 transition-all" />
             </div>
           </div>
         </div>
@@ -113,47 +114,4 @@ export default function HomeClient() {
   )
 }
 
-function ConnectWalletButton() {
-  const { connected, connecting, disconnecting, publicKey, connect, disconnect } = useWallet()
-  const [pending, setPending] = useState(false)
-
-  const label = useMemo(() => {
-    if (connecting || pending) return 'Connecting...'
-    if (disconnecting) return 'Disconnecting...'
-    if (connected && publicKey) {
-      const base58 = publicKey.toBase58()
-      return `${base58.slice(0, 4)}...${base58.slice(-4)}`
-    }
-    return 'Connect Wallet'
-  }, [connected, connecting, disconnecting, pending, publicKey])
-
-  const handleClick = async () => {
-    try {
-      setPending(true)
-      if (connected) {
-        await disconnect()
-      } else {
-        await connect()
-      }
-    } catch (error) {
-      console.error('Wallet action failed:', error)
-    } finally {
-      setPending(false)
-    }
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={connecting || disconnecting || pending}
-      className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-        connected
-          ? 'bg-green-500/20 border border-green-500/40 text-green-300'
-          : 'bg-primary/20 border border-primary/40 text-primary'
-      } ${connecting || disconnecting || pending ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'}`}
-    >
-      {label}
-    </button>
-  )
-}
 

@@ -27,7 +27,10 @@
     "demo:real": "node demo/chain-demo.js",
     "demo:mainnet": "echo '⚠️  MAINNET USES REAL MONEY! Are you sure? (Ctrl+C to cancel)' && sleep 5 && node demo/chain-demo.js",
     "verify": "node verify-setup.js",
-    "test": "node -e \"console.log('✅ Manual testing recommended: npm run verify && npm run demo:chain')\"",
+    "test": "npm run test:integration && npm run test:e2e",
+    "test:integration": "bash tests/integration-test.sh",
+    "test:e2e": "bash tests/e2e-chain-test.sh",
+    "test:all": "npm run test:integration && npm run test:e2e",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist web/node_modules web/.next"
   },
   "keywords": [
