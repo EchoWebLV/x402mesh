@@ -46,6 +46,9 @@ cd agent-2-agent-infra
 # Install dependencies
 npm install
 
+# Start PostgreSQL (optional - falls back to in-memory)
+npm run db:start
+
 # Build packages
 npm run build
 ```
@@ -327,14 +330,18 @@ When you run `npm run demo:chain`, you'll see:
 ✅ **Chain Orchestration** - Complex workflows made simple  
 ✅ **Real-time Updates** - See agents working in real-time  
 
-## ✅ Current Features
+## ✅ Current Features (v0.1.0-alpha.1)
 
 - ✅ **Real Solana Integration**: Devnet-ready with SPL token support
-- ✅ **USDC Transfers**: Working SPL token implementation
+- ✅ **PostgreSQL Database**: Persistent agent registry
+- ✅ **CLI Tool**: Register any x402 agent with one command
+- ✅ **Health Checks**: Verify agent availability before payment
+- ✅ **Auto-Refunds**: Automatic refunds if agent fails
 - ✅ **Phantom Wallet**: Full integration in web UI
 - ✅ **x402 Protocol Compliant**: Standard PaymentRequirements, X-PAYMENT headers, base64 encoding
 - ✅ **Agent Chaining**: Multi-agent workflows with payment routing
 - ✅ **Beautiful Web UI**: Professional interface with real-time updates
+- ✅ **Test Coverage**: 14 comprehensive tests
 
 ### x402 Standard Compliance
 
@@ -373,14 +380,25 @@ Implements the [official Solana x402 specification](https://solana.com/developer
 ## 🧪 Testing
 
 ```bash
-# Run all tests
-npm test
+# Run payment router tests (14 tests)
+npm run test -w @x402mesh/router
 
-# Test individual packages
-npm test -w @a2a/sdk
-npm test -w @a2a/registry
-npm test -w @a2a/router
+# Run SDK tests
+npm run test -w @x402mesh/sdk
+
+# Integration tests
+npm run test:integration
+
+# E2E tests
+npm run test:e2e
 ```
+
+**Current Coverage:** 14 tests passing ✅
+- Payment processing
+- Health checks
+- Automatic refunds
+- Chain execution
+- Split payments
 
 ## 🤝 Contributing
 

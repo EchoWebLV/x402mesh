@@ -1,6 +1,6 @@
 # 🚀 Agent-to-Agent Infrastructure: Current State & Future Vision
 
-**Last Updated:** November 6, 2025
+**Last Updated:** November 7, 2025 (Alpha Release)
 
 ---
 
@@ -68,10 +68,21 @@
     │                  │ │ (Port 3002)  │  │ • Translator    │
     │ • Discovery      │ │              │  │ • Summarizer    │
     │ • Registration   │ │ • Process $  │  │ • Analyzer      │
-    │ • Heartbeat      │ │ • Chain $    │  │                 │
-    │ • In-Memory Map  │ │ • Split $    │  │ Ports 3100-3102 │
-    │                  │ │ • Track txs  │  │                 │
-    └──────────────────┘ └──────┬───────┘  └─────────────────┘
+    │ • PostgreSQL DB  │ │ • Chain $    │  │                 │
+    │ • Health Check   │ │ • Split $    │  │ Ports 3100-3102 │
+    │ • CLI Tool       │ │ • Track txs  │  │                 │
+    │ • REST API       │ │ • Refunds    │  │                 │
+    └──────────┬───────┘ └──────┬───────┘  └─────────────────┘
+               │                │
+               ▼                ▼
+       ┌──────────────┐ ┌──────────────┐
+       │ PostgreSQL   │ │   Solana     │
+       │   Database   │ │   Devnet     │
+       │              │ │              │
+       │ • Persistent │ │ • USDC/SOL   │
+       │ • Indexed    │ │ • Wallets    │
+       │ • Scalable   │ │              │
+       └──────────────┘ └──────────────┘
                                 │
                                 ▼
                         ┌──────────────┐
@@ -83,20 +94,28 @@
                         └──────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  DEVELOPER WORKFLOW (Current)                                           │
+│  DEVELOPER WORKFLOW (Current - v0.1.0-alpha.1)                          │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  1. Clone repo        → git clone                                       │
 │  2. Install deps      → npm install                                     │
-│  3. Build packages    → npm run build                                   │
-│  4. Start services    → npm run start:all                               │
-│  5. Create agent      → Manually write TypeScript                       │
-│  6. Import SDK        → import { Agent } from '@x402mesh/sdk'                │
-│  7. Run agent         → npx tsx my-agent.ts                             │
-│  8. Test in UI        → Open localhost:3000                             │
+│  3. Start database    → npm run db:start (PostgreSQL via Docker)        │
+│  4. Build packages    → npm run build                                   │
+│  5. Start services    → npm run start:all                               │
 │                                                                          │
-│  ❌ NO: Templates, CLI, Auto-deploy, Marketplace                        │
-│  ✅ YES: SDK, Registry, Router, Web UI, Demos                           │
+│  Option A: Use SDK                                                      │
+│  6a. Create agent     → Extend Agent class                              │
+│  7a. Run agent        → npx tsx my-agent.ts                             │
+│  8a. Auto-registered  → In PostgreSQL registry                          │
+│                                                                          │
+│  Option B: Use CLI (Existing x402 API)                                  │
+│  6b. Your API exists  → Already deployed somewhere                      │
+│  7b. Register it      → x402 register --endpoint https://...            │
+│  8b. Now discoverable → Listed in registry                              │
+│                                                                          │
+│  ✅ YES: SDK, Registry, Router, Web UI, Demos, PostgreSQL, CLI          │
+│  ✅ NEW: Health checks, Auto-refunds, 14 tests                          │
+│  ❌ NO: Templates, Auto-deploy, Marketplace UI                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -287,12 +306,14 @@
 ## Implementation Roadmap
 
 ```
-Phase 1: Current State (✅ DONE)
+Phase 1: Current State (✅ DONE - v0.1.0-alpha.1)
 ├── SDK (@x402mesh/sdk)
-├── Registry service
-├── Payment router
-├── Web UI
-└── Demo agents
+├── Registry service with PostgreSQL
+├── Payment router with health checks
+├── Web UI with Phantom wallet
+├── CLI tool (@x402mesh/cli)
+├── 14 comprehensive tests
+└── Demo agents with real Solana integration
 
 Phase 2: CLI Foundation (🔨 Next)
 ├── @x402mesh/cli package
@@ -821,9 +842,16 @@ Phase 4: Full Decentralization (12 months)
 | Discovery | ✅ API only | ✅ CLI + Web + API |
 | Community packages | ❌ No | ✅ Anyone can publish |
 
-**Current Progress: 70% Foundation Built**
+**Current Progress: 80% Foundation Built** (v0.1.0-alpha.1)
 
-**Adding CLI + Marketplace = Full NPM Experience! 🚀**
+**What's New:**
+- ✅ PostgreSQL for persistence
+- ✅ CLI for registration (`x402 register`)
+- ✅ Health checks before payment
+- ✅ Automatic refunds on failure
+- ✅ 14 passing tests
+
+**Next: Marketplace UI + Auto-Discovery = Full NPM Experience! 🚀**
 
 ---
 
