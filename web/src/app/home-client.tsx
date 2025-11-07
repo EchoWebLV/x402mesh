@@ -6,9 +6,10 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { AgentChain } from '@/components/AgentChain'
 import { PaymentTracker } from '@/components/PaymentTracker'
 import { AgentCards } from '@/components/AgentCards'
+import { AgentSearch } from '@/components/AgentSearch'
 
 export default function HomeClient() {
-  const [activeTab, setActiveTab] = useState<'chain' | 'payments'>('chain')
+  const [activeTab, setActiveTab] = useState<'chain' | 'payments' | 'search'>('chain')
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-dark via-gray-900 to-purple-900">
@@ -61,6 +62,16 @@ export default function HomeClient() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 justify-center">
           <button
+            onClick={() => setActiveTab('search')}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'search'
+                ? 'bg-gradient-to-r from-primary to-secondary text-dark'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            🔍 Discover Agents
+          </button>
+          <button
             onClick={() => setActiveTab('chain')}
             className={`px-6 py-3 rounded-lg font-semibold transition-all ${
               activeTab === 'chain'
@@ -84,6 +95,7 @@ export default function HomeClient() {
 
         {/* Content */}
         <div className="max-w-6xl mx-auto">
+          {activeTab === 'search' && <AgentSearch />}
           {activeTab === 'chain' && <AgentChain />}
           {activeTab === 'payments' && <PaymentTracker />}
         </div>
