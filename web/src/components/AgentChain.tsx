@@ -12,18 +12,28 @@ const scenarios = [
     title: 'Tech Discussion',
     text: 'Artificial intelligence is revolutionizing blockchain technology. Payment systems are becoming more efficient and secure.',
     language: 'spanish',
+    type: 'text'
   },
   {
     id: 2,
     title: 'Customer Feedback',
     text: 'This product is absolutely amazing! The user interface is intuitive and the performance is excellent.',
     language: 'french',
+    type: 'text'
   },
   {
     id: 3,
     title: 'Market Analysis',
     text: 'The cryptocurrency market shows volatile behavior. Decentralized finance platforms are gaining significant traction.',
     language: 'german',
+    type: 'text'
+  },
+  {
+    id: 4,
+    title: 'AI Image Generation',
+    text: 'a futuristic robot character in cyberpunk style',
+    prompt: 'a futuristic robot character in cyberpunk style',
+    type: 'image'
   },
 ]
 
@@ -104,37 +114,67 @@ export function AgentChain() {
     setError(null)
 
     try {
-      // Get agent IDs
-      const translator = agents.find(a => a.name === 'Translator Agent')
-      const summarizer = agents.find(a => a.name === 'Summarizer Agent')
-      const analyzer = agents.find(a => a.name === 'Analyzer Agent')
+      // Determine chain based on scenario type
+      let chainPayload: any[] = []
+      
+      if (selectedScenario.type === 'image') {
+        // Image generation scenario
+        const imageGenerator = agents.find(a => a.name === 'Image Generator')
+        const backgroundRemover = agents.find(a => a.name === 'Background Remover')
 
-      if (!translator || !summarizer || !analyzer) {
-        throw new Error('Required agents not found. Please ensure all agents are running.')
+        if (!imageGenerator || !backgroundRemover) {
+          throw new Error('Image agents not found. Please ensure Image Generator and Background Remover are running.')
+        }
+
+        chainPayload = [
+          {
+            agentId: imageGenerator.id,
+            capability: 'generate_image',
+            input: {
+              prompt: selectedScenario.prompt || selectedScenario.text,
+              style: 'cyberpunk',
+            },
+          },
+          {
+            agentId: backgroundRemover.id,
+            capability: 'remove_background',
+            input: {},
+          },
+        ]
+      } else {
+        // Text processing scenario
+        const translator = agents.find(a => a.name === 'Translator Agent')
+        const summarizer = agents.find(a => a.name === 'Summarizer Agent')
+        const analyzer = agents.find(a => a.name === 'Analyzer Agent')
+
+        if (!translator || !summarizer || !analyzer) {
+          throw new Error('Required agents not found. Please ensure all agents are running.')
+        }
+
+        chainPayload = [
+          {
+            agentId: translator.id,
+            capability: 'translate',
+            input: {
+              text: selectedScenario.text,
+              targetLanguage: selectedScenario.language,
+            },
+          },
+          {
+            agentId: summarizer.id,
+            capability: 'summarize',
+            input: {},
+          },
+          {
+            agentId: analyzer.id,
+            capability: 'analyze_sentiment',
+            input: {},
+          },
+        ]
       }
 
       // Execute real chain via backend
       setCurrentStep(1)
-      const chainPayload = [
-        {
-          agentId: translator.id,
-          capability: 'translate',
-          input: {
-            text: selectedScenario.text,
-            targetLanguage: selectedScenario.language,
-          },
-        },
-        {
-          agentId: summarizer.id,
-          capability: 'summarize',
-          input: {},
-        },
-        {
-          agentId: analyzer.id,
-          capability: 'analyze_sentiment',
-          input: {},
-        },
-      ]
 
       let signatures: string[] | undefined
 
@@ -185,31 +225,51 @@ export function AgentChain() {
       await new Promise(resolve => setTimeout(resolve, 500))
       setCurrentStep(4)
 
-      // Process real results
-      const [translationResult, summaryResult, analysisResult] = chainResponse.data.results
+      // Process results based on scenario type
+      if (selectedScenario.type === 'image') {
+        const [imageResult, bgRemovalResult] = chainResponse.data.results
 
-      setResults({
-        translation: translationResult,
-        summary: summaryResult.summary,
-        summaryDetails: {
-          wordCount: summaryResult.wordCount,
-          compressionRatio: summaryResult.compressionRatio,
-        },
-        sentiment: {
-          score: analysisResult.score,
-          label: analysisResult.sentiment,
-          insights: analysisResult.insights,
-        },
-        payments: chainResponse.data.payments.map((p: any, idx: number) => ({
-          agent: ['Translator', 'Summarizer', 'Analyzer'][idx],
-          amount: p.amount,
-          signature: p.signature || p.transactionId.substring(0, 8) + '...' + p.transactionId.substring(p.transactionId.length - 4),
-          transactionId: p.transactionId,
-          explorerUrl: p.explorerUrl,
-        })),
-        totalCost: chainResponse.data.totalCost,
-        executionTime: chainResponse.data.executionTime,
-      })
+        setResults({
+          imageGeneration: imageResult,
+          backgroundRemoval: bgRemovalResult,
+          type: 'image',
+          payments: chainResponse.data.payments.map((p: any, idx: number) => ({
+            agent: ['Image Generator', 'Background Remover'][idx],
+            amount: p.amount,
+            signature: p.signature || p.transactionId.substring(0, 8) + '...' + p.transactionId.substring(p.transactionId.length - 4),
+            transactionId: p.transactionId,
+            explorerUrl: p.explorerUrl,
+          })),
+          totalCost: chainResponse.data.totalCost,
+          executionTime: chainResponse.data.executionTime,
+        })
+      } else {
+        const [translationResult, summaryResult, analysisResult] = chainResponse.data.results
+
+        setResults({
+          translation: translationResult,
+          summary: summaryResult.summary,
+          summaryDetails: {
+            wordCount: summaryResult.wordCount,
+            compressionRatio: summaryResult.compressionRatio,
+          },
+          sentiment: {
+            score: analysisResult.score,
+            label: analysisResult.sentiment,
+            insights: analysisResult.insights,
+          },
+          type: 'text',
+          payments: chainResponse.data.payments.map((p: any, idx: number) => ({
+            agent: ['Translator', 'Summarizer', 'Analyzer'][idx],
+            amount: p.amount,
+            signature: p.signature || p.transactionId.substring(0, 8) + '...' + p.transactionId.substring(p.transactionId.length - 4),
+            transactionId: p.transactionId,
+            explorerUrl: p.explorerUrl,
+          })),
+          totalCost: chainResponse.data.totalCost,
+          executionTime: chainResponse.data.executionTime,
+        })
+      }
 
       if (USE_REAL_PAYMENTS) {
         await checkBalance()
@@ -300,53 +360,85 @@ export function AgentChain() {
         <h3 className="text-lg font-bold mb-6">Agent Chain Flow</h3>
         
         <div className="space-y-4">
-          {/* Step 1: Translator */}
-          <ChainStep
-            icon="🌍"
-            title="Translator Agent"
-            description="Translating to Spanish"
-            price="0.010 SOL"
-            active={currentStep >= 1}
-            completed={currentStep > 1}
-          />
+          {selectedScenario.type === 'image' ? (
+            <>
+              {/* Image Scenario */}
+              <ChainStep
+                icon="🎨"
+                title="Image Generator"
+                description={`Generate: ${selectedScenario.prompt?.slice(0, 30)}...`}
+                price="0.010 SOL"
+                active={currentStep >= 1}
+                completed={currentStep > 1}
+              />
 
-          <div className="h-8 flex items-center justify-center">
-            <motion.div
-              className="w-1 h-8 bg-gradient-to-b from-primary to-transparent"
-              initial={{ height: 0 }}
-              animate={{ height: currentStep >= 2 ? 32 : 0 }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
+              <div className="h-8 flex items-center justify-center">
+                <motion.div
+                  className="w-1 h-8 bg-gradient-to-b from-primary to-transparent"
+                  initial={{ height: 0 }}
+                  animate={{ height: currentStep >= 2 ? 32 : 0 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
 
-          {/* Step 2: Summarizer */}
-          <ChainStep
-            icon="📝"
-            title="Summarizer Agent"
-            description="Creating bullet points"
-            price="0.015 SOL"
-            active={currentStep >= 2}
-            completed={currentStep > 2}
-          />
+              <ChainStep
+                icon="🖼️"
+                title="Background Remover"
+                description="Remove background from image"
+                price="0.008 SOL"
+                active={currentStep >= 2}
+                completed={currentStep > 2}
+              />
+            </>
+          ) : (
+            <>
+              {/* Text Scenario */}
+              <ChainStep
+                icon="🌍"
+                title="Translator Agent"
+                description={`Translating to ${selectedScenario.language}`}
+                price="0.010 SOL"
+                active={currentStep >= 1}
+                completed={currentStep > 1}
+              />
 
-          <div className="h-8 flex items-center justify-center">
-            <motion.div
-              className="w-1 h-8 bg-gradient-to-b from-primary to-transparent"
-              initial={{ height: 0 }}
-              animate={{ height: currentStep >= 3 ? 32 : 0 }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
+              <div className="h-8 flex items-center justify-center">
+                <motion.div
+                  className="w-1 h-8 bg-gradient-to-b from-primary to-transparent"
+                  initial={{ height: 0 }}
+                  animate={{ height: currentStep >= 2 ? 32 : 0 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
 
-          {/* Step 3: Analyzer */}
-          <ChainStep
-            icon="🔍"
-            title="Analyzer Agent"
-            description="Analyzing sentiment"
-            price="0.012 SOL"
-            active={currentStep >= 3}
-            completed={currentStep > 3}
-          />
+              <ChainStep
+                icon="📝"
+                title="Summarizer Agent"
+                description="Creating bullet points"
+                price="0.015 SOL"
+                active={currentStep >= 2}
+                completed={currentStep > 2}
+              />
+
+              <div className="h-8 flex items-center justify-center">
+                <motion.div
+                  className="w-1 h-8 bg-gradient-to-b from-primary to-transparent"
+                  initial={{ height: 0 }}
+                  animate={{ height: currentStep >= 3 ? 32 : 0 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+
+              <ChainStep
+                icon="🔍"
+                title="Analyzer Agent"
+                description="Analyzing sentiment"
+                price="0.012 SOL"
+                active={currentStep >= 3}
+                completed={currentStep > 3}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -365,54 +457,81 @@ export function AgentChain() {
             </h3>
 
             <div className="space-y-4">
-              {/* Translation */}
-              <div>
-                <h4 className="font-semibold text-gray-300 mb-2">🌍 Translation ({results.translation.language}):</h4>
-                <p className="text-gray-400 bg-gray-800/50 rounded-lg p-3">
-                  {results.translation.translatedText}
-                </p>
-              </div>
-
-              {/* Summary */}
-              <div>
-                <h4 className="font-semibold text-gray-300 mb-2">📝 Summary:</h4>
-                <ul className="list-disc list-inside text-gray-400 space-y-1">
-                  {results.summary.map((point: string, i: number) => (
-                    <li key={i}>{point}</li>
-                  ))}
-                </ul>
-                {results.summaryDetails && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    {results.summaryDetails.wordCount} words • {results.summaryDetails.compressionRatio} compression
-                  </p>
-                )}
-              </div>
-
-              {/* Sentiment */}
-              <div>
-                <h4 className="font-semibold text-gray-300 mb-2">🔍 Sentiment Analysis:</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      results.sentiment.label === 'POSITIVE' ? 'bg-green-500/20 text-green-400' : 
-                      results.sentiment.label === 'NEGATIVE' ? 'bg-red-500/20 text-red-400' :
-                      'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {results.sentiment.label}
-                    </span>
-                    <span className="text-gray-400 text-sm">
-                      Score: {results.sentiment.score.toFixed(2)}
-                    </span>
+              {/* Image Results */}
+              {results.type === 'image' && (
+                <>
+                  <div>
+                    <h4 className="font-semibold text-gray-300 mb-2">Image Generated:</h4>
+                    <div className="bg-gray-800/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-sm mb-2">Prompt: {results.imageGeneration.prompt}</p>
+                      <p className="text-gray-500 text-xs">
+                        {results.imageGeneration.dimensions.width}x{results.imageGeneration.dimensions.height} • {results.imageGeneration.model}
+                      </p>
+                      <p className="text-gray-600 text-xs mt-2">{results.imageGeneration.note}</p>
+                    </div>
                   </div>
-                  {results.sentiment.insights && results.sentiment.insights.length > 0 && (
-                    <ul className="text-sm text-gray-400 space-y-1">
-                      {results.sentiment.insights.map((insight: string, i: number) => (
-                        <li key={i}>• {insight}</li>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-300 mb-2">Background Removed:</h4>
+                    <div className="bg-gray-800/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-sm">Transparency: {results.backgroundRemoval.transparency ? 'Yes' : 'No'}</p>
+                      <p className="text-gray-400 text-sm">Format: {results.backgroundRemoval.format.toUpperCase()}</p>
+                      <p className="text-gray-600 text-xs mt-2">{results.backgroundRemoval.note}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Text Results */}
+              {results.type === 'text' && (
+                <>
+                  <div>
+                    <h4 className="font-semibold text-gray-300 mb-2">Translation ({results.translation.language}):</h4>
+                    <p className="text-gray-400 bg-gray-800/50 rounded-lg p-3">
+                      {results.translation.translatedText}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-300 mb-2">Summary:</h4>
+                    <ul className="list-disc list-inside text-gray-400 space-y-1">
+                      {results.summary.map((point: string, i: number) => (
+                        <li key={i}>{point}</li>
                       ))}
                     </ul>
-                  )}
-                </div>
-              </div>
+                    {results.summaryDetails && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        {results.summaryDetails.wordCount} words • {results.summaryDetails.compressionRatio} compression
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-300 mb-2">Sentiment Analysis:</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                          results.sentiment.label === 'POSITIVE' ? 'bg-green-500/20 text-green-400' : 
+                          results.sentiment.label === 'NEGATIVE' ? 'bg-red-500/20 text-red-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {results.sentiment.label}
+                        </span>
+                        <span className="text-gray-400 text-sm">
+                          Score: {results.sentiment.score.toFixed(2)}
+                        </span>
+                      </div>
+                      {results.sentiment.insights && results.sentiment.insights.length > 0 && (
+                        <ul className="text-sm text-gray-400 space-y-1">
+                          {results.sentiment.insights.map((insight: string, i: number) => (
+                            <li key={i}>• {insight}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Payments */}
               <div>

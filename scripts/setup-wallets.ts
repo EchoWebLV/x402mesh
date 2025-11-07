@@ -8,6 +8,8 @@ const WALLET_NAMES = [
   'TranslatorWallet',
   'SummarizerWallet',
   'AnalyzerWallet',
+  'ImageGeneratorWallet',
+  'BackgroundRemoverWallet',
 ];
 
 console.log('\n╔═══════════════════════════════════════════════════════╗');
