@@ -187,8 +187,14 @@ export function AgentChain() {
 
         for (let i = 0; i < chainPayload.length; i++) {
           const step = chainPayload[i]
-          const agentMeta = [translator, summarizer, analyzer][i]
-          const capability = agentMeta?.capabilities.find((c: any) => c.name === step.capability)
+          
+          // Get agent metadata from registry
+          const agentMeta = agents.find(a => a.id === step.agentId)
+          if (!agentMeta) {
+            throw new Error(`Agent not found: ${step.agentId}`)
+          }
+          
+          const capability = agentMeta.capabilities.find((c: any) => c.name === step.capability)
 
           if (!capability) {
             throw new Error(`Pricing not found for capability ${step.capability}`)
@@ -461,22 +467,40 @@ export function AgentChain() {
               {results.type === 'image' && (
                 <>
                   <div>
-                    <h4 className="font-semibold text-gray-300 mb-2">Image Generated:</h4>
-                    <div className="bg-gray-800/50 rounded-lg p-3">
-                      <p className="text-gray-400 text-sm mb-2">Prompt: {results.imageGeneration.prompt}</p>
+                    <h4 className="font-semibold text-gray-300 mb-2">Step 1: Image Generated</h4>
+                    <div className="bg-gray-800/50 rounded-lg p-3 space-y-3">
+                      <p className="text-gray-400 text-sm">Prompt: {results.imageGeneration.prompt}</p>
+                      {results.imageGeneration.model !== 'simulated' && results.imageGeneration.imageData && (
+                        <div className="border border-gray-700 rounded-lg overflow-hidden max-w-md mx-auto">
+                          <img 
+                            src={results.imageGeneration.imageUrl} 
+                            alt="Generated image"
+                            className="w-full h-auto"
+                          />
+                        </div>
+                      )}
                       <p className="text-gray-500 text-xs">
                         {results.imageGeneration.dimensions.width}x{results.imageGeneration.dimensions.height} • {results.imageGeneration.model}
                       </p>
-                      <p className="text-gray-600 text-xs mt-2">{results.imageGeneration.note}</p>
+                      <p className="text-gray-600 text-xs">{results.imageGeneration.note}</p>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-gray-300 mb-2">Background Removed:</h4>
-                    <div className="bg-gray-800/50 rounded-lg p-3">
+                    <h4 className="font-semibold text-gray-300 mb-2">Step 2: Background Removed</h4>
+                    <div className="bg-gray-800/50 rounded-lg p-3 space-y-3">
+                      {results.backgroundRemoval.imageData && results.backgroundRemoval.note?.includes('remove.bg') && (
+                        <div className="border border-gray-700 rounded-lg overflow-hidden bg-checkerboard max-w-md mx-auto">
+                          <img 
+                            src={results.backgroundRemoval.processedImageUrl} 
+                            alt="Background removed"
+                            className="w-full h-auto"
+                          />
+                        </div>
+                      )}
                       <p className="text-gray-400 text-sm">Transparency: {results.backgroundRemoval.transparency ? 'Yes' : 'No'}</p>
                       <p className="text-gray-400 text-sm">Format: {results.backgroundRemoval.format.toUpperCase()}</p>
-                      <p className="text-gray-600 text-xs mt-2">{results.backgroundRemoval.note}</p>
+                      <p className="text-gray-600 text-xs">{results.backgroundRemoval.note}</p>
                     </div>
                   </div>
                 </>

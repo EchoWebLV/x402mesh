@@ -2,10 +2,16 @@ import 'dotenv/config';
 import { Agent } from '../../packages/sdk/src/agent.js';
 import { AgentCapability } from '../../packages/sdk/src/types.js';
 import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
+import { GoogleGenAI } from '@google/genai';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 const IMAGE_GENERATOR_WALLET_NAME = process.env.IMAGE_GENERATOR_WALLET || 'ImageGeneratorWallet';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 class ImageGeneratorAgent extends Agent {
+  private geminiClient: any = null;
+
   constructor(walletAddress: string, port: number = 3103) {
     const capabilities: AgentCapability[] = [
       {
@@ -30,6 +36,18 @@ class ImageGeneratorAgent extends Agent {
       port,
       tags: ['image', 'ai', 'generation', 'stable-diffusion'],
     });
+
+    // Initialize Gemini after super()
+    if (GEMINI_API_KEY) {
+      try {
+        this.geminiClient = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        console.log('✨ Gemini AI integration enabled for real image generation');
+      } catch (error) {
+        console.warn('⚠️  Gemini AI not available, using fallback');
+      }
+    } else {
+      console.log('🎨 Using simulated image generation (set GEMINI_API_KEY for real AI)');
+    }
   }
 
   async execute(capability: string, input: any): Promise<any> {
@@ -40,29 +58,65 @@ class ImageGeneratorAgent extends Agent {
   }
 
   private async generateImage(input: { prompt: string; style?: string }): Promise<any> {
-    // Simulate AI image generation
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     const prompt = input.prompt || 'a beautiful landscape';
     const style = input.style || 'realistic';
+    const fullPrompt = `${prompt} in ${style} style`;
 
-    // In production, would call:
-    // - Replicate API (Stable Diffusion)
-    // - DALL-E API
-    // - Midjourney API
-    // For demo, return simulated response
+    if (this.geminiClient) {
+      try {
+        console.log(`   🎨 Generating image with Gemini: "${fullPrompt}"`);
+        
+        const response = await this.geminiClient.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: fullPrompt,
+        });
+
+        // Extract image from response
+        if (response.candidates && response.candidates[0]) {
+          const candidate = response.candidates[0];
+          const parts = candidate.content?.parts || [];
+          
+          for (const part of parts) {
+            if (part.inlineData) {
+              const imageData = part.inlineData.data;
+              
+              console.log(`   ✅ Image generated with Gemini AI`);
+
+              return {
+                imageData: imageData, // base64 string
+                imageUrl: `data:image/png;base64,${imageData}`,
+                prompt: fullPrompt,
+                style,
+                dimensions: { width: 1024, height: 1024 },
+                model: 'gemini-2.5-flash-image',
+                format: 'png',
+                note: 'Generated with Google Gemini AI'
+              };
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('   ❌ Gemini generation failed:', error.message || error);
+        console.error('   Full error:', error);
+      }
+    }
+
+    // Fallback for demo - create a simple placeholder base64 image
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    const imageUrl = `https://placeholder.image/generated/${encodeURIComponent(prompt.slice(0, 30))}.png`;
+    // 1x1 transparent PNG in base64
+    const placeholderBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     
-    console.log(`   ✅ Generated image: "${prompt}" (${style} style)`);
+    console.log(`   ✅ Simulated image: "${prompt}" (${style} style)`);
 
     return {
-      imageUrl,
+      imageData: placeholderBase64,
+      imageUrl: `data:image/png;base64,${placeholderBase64}`,
       prompt: input.prompt,
-      style: style,
+      style,
       dimensions: { width: 1024, height: 1024 },
-      model: 'stable-diffusion-xl',
-      note: 'Demo: Real integration with Replicate/DALL-E available with API key'
+      model: 'simulated',
+      note: 'Demo mode - set GEMINI_API_KEY for real AI generation'
     };
   }
 }
