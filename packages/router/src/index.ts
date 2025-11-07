@@ -173,13 +173,30 @@ app.post('/payments/chain', async (req, res) => {
         throw new Error(`Capability ${step.capability} not found on agent ${agent.name}`);
       }
 
+      // Health check before payment
+      console.log(`   🏥 Checking health of ${agent.name}...`);
+      try {
+        const healthCheck = await axios.get(`${agent.endpoint}/health`, { 
+          timeout: 3000,
+          validateStatus: (status) => status === 200
+        });
+        
+        if (healthCheck.data.status !== 'healthy') {
+          throw new Error('Agent health check failed');
+        }
+        console.log(`   ✅ ${agent.name} is healthy`);
+      } catch (healthError: any) {
+        rollbackNeeded = false; // No payments made yet, no rollback needed
+        throw new Error(`Agent ${agent.name} is unavailable (health check failed: ${healthError.message}). Payment not processed.`);
+      }
+
       const signatureForStep = Array.isArray(signatures) ? signatures[i] : undefined;
       if (realTransactions && !signatureForStep) {
         rollbackNeeded = true;
         throw new Error(`Transaction signature required for step ${i + 1} when REAL_TRANSACTIONS=true`);
       }
       
-      // Process payment
+      // Process payment (only after health check passes)
       const payment = await router.processPayment({
         from: paymentSource,
         to: agent.walletAddress,
@@ -236,17 +253,37 @@ app.post('/payments/chain', async (req, res) => {
       const rollbacks = [];
       for (const { payment, agent } of completedPayments) {
         try {
-          // In a real system, this would reverse the blockchain transaction
-          // For demo, we'll mark it as refunded
+          // Automatically refund the payment
           console.log(`   🔄 Refunding ${payment.amount} ${payment.currency} from ${agent.name}`);
+          
+          if (realTransactions) {
+            console.log(`   ℹ️  Real transaction refund requires new on-chain payment (manual process)`);
+            rollbacks.push({
+              originalPayment: payment.transactionId,
+              amount: payment.amount,
+              status: 'refund_required',
+              note: 'Agent execution failed - manual refund needed',
+              signature: payment.signature,
+            });
+          } else {
+            // For simulated transactions, execute actual refund
+            const refund = await router.refundPayment(payment.transactionId, 'Chain execution failed');
+            rollbacks.push({
+              originalPayment: payment.transactionId,
+              refundPayment: refund.transactionId,
+              amount: payment.amount,
+              status: 'refunded',
+              note: 'Chain execution failed - payment refunded',
+            });
+          }
+        } catch (rollbackError) {
+          console.error(`   ❌ Failed to rollback payment to ${agent.name}:`, rollbackError);
           rollbacks.push({
             originalPayment: payment.transactionId,
             amount: payment.amount,
-            status: 'refunded',
-            note: 'Chain execution failed',
+            status: 'refund_failed',
+            error: rollbackError instanceof Error ? rollbackError.message : 'Unknown error',
           });
-        } catch (rollbackError) {
-          console.error(`   ❌ Failed to rollback payment to ${agent.name}`);
         }
       }
       
