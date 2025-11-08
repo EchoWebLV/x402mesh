@@ -328,6 +328,94 @@ app.get('/stats', (req, res) => {
   res.json(stats);
 });
 
+// AI Chain Generation - Secure backend endpoint
+app.post('/api/generate-chain', async (req, res) => {
+  try {
+    const { prompt, agents } = req.body;
+    
+    if (!prompt || !agents) {
+      return res.status(400).json({ error: 'Prompt and agents required' });
+    }
+
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ 
+        error: 'OpenAI API key not configured',
+        fallback: true 
+      });
+    }
+
+    const systemPrompt = `You are an expert at building agent chains. You have access to these agents in the database:
+
+${JSON.stringify(agents, null, 2)}
+
+SDK USAGE:
+The user calls agents using the PaymentClient like this:
+
+\`\`\`typescript
+import { PaymentClient } from '@x402mesh/sdk';
+
+const client = new PaymentClient();
+const result = await client.executeChain({
+  paymentSource: 'wallet-address',
+  chain: [
+    {
+      agentId: 'agent-id-from-database',
+      capability: 'capability_name',
+      input: { /* parameters for this capability */ }
+    }
+  ]
+});
+\`\`\`
+
+RULES:
+1. Analyze the user's request
+2. Select the optimal agents from the database
+3. Chain them in logical order (output of one → input of next)
+4. Use EXACT agent IDs from the database
+5. Fill in proper input parameters based on the request
+6. Return ONLY valid JSON with this structure:
+{
+  "chain": [
+    {
+      "agentId": "exact-id-from-database",
+      "capability": "exact-capability-name",
+      "input": { "param": "value" },
+      "reasoning": "why this agent"
+    }
+  ]
+}
+
+Be smart about chaining - if they want "image without background", chain Image Generator → Background Remover.`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' }
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      }
+    });
+
+    const aiResponse = JSON.parse(response.data.choices[0].message.content);
+    res.json(aiResponse);
+    
+  } catch (error: any) {
+    console.error('AI chain generation failed:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate chain',
+      fallback: true,
+      message: error.message 
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Payment Router running on http://localhost:${PORT}`);
 });

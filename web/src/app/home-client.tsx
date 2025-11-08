@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { AgentChain } from '@/components/AgentChain'
-import { PaymentTracker } from '@/components/PaymentTracker'
 import { AgentSearch } from '@/components/AgentSearch'
-import { Bot, Search, Link2, DollarSign, Terminal } from 'lucide-react'
+import { ChainBuilder } from '@/components/ChainBuilder'
+import { Bot, Search, Link2, Code, Terminal } from 'lucide-react'
 
 export default function HomeClient() {
-  const [activeTab, setActiveTab] = useState<'chain' | 'payments' | 'search'>('chain')
+  const [activeTab, setActiveTab] = useState<'chain' | 'builder' | 'search'>('chain')
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -70,15 +70,15 @@ export default function HomeClient() {
             Chain
           </button>
           <button
-            onClick={() => setActiveTab('payments')}
+            onClick={() => setActiveTab('builder')}
             className={`px-5 py-2.5 font-medium transition-all flex items-center gap-2 border-b-2 ${
-              activeTab === 'payments'
+              activeTab === 'builder'
                 ? 'border-white text-white'
                 : 'border-transparent text-gray-600 hover:text-gray-400'
             }`}
           >
-            <DollarSign className="w-4 h-4" />
-            Payments
+            <Code className="w-4 h-4" />
+            Builder
           </button>
         </div>
 
@@ -86,7 +86,7 @@ export default function HomeClient() {
         <div className="max-w-6xl mx-auto">
           {activeTab === 'search' && <AgentSearch />}
           {activeTab === 'chain' && <AgentChain />}
-          {activeTab === 'payments' && <PaymentTracker />}
+          {activeTab === 'builder' && <ChainBuilder />}
         </div>
       </section>
 
