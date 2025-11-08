@@ -211,7 +211,7 @@ console.log('Result:', result);
         </div>
 
         <p className="text-gray-500 text-sm mb-4">
-          Describe what you want to build. GPT-4o analyzes available agents in the database and generates the optimal chain with proper SDK code.
+          Describe what you want to build. AI analyzes available agents and generates the optimal chain with proper SDK code.
         </p>
 
         <div className="space-y-3">
