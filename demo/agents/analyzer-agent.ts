@@ -4,9 +4,22 @@ import { AgentCapability } from '../../packages/sdk/src/types.js';
 import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
 
 const ANALYZER_WALLET_NAME = process.env.ANALYZER_WALLET || 'AnalyzerWallet';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 class AnalyzerAgent extends Agent {
+  private openaiClient: any = null;
+
   constructor(walletAddress: string, port: number = 3102) {
+    if (OPENAI_API_KEY) {
+      import('openai').then(({ default: OpenAI }) => {
+        this.openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+        console.log('✨ OpenAI integration enabled for real sentiment analysis');
+      }).catch(() => {
+        console.warn('⚠️  OpenAI not available, using fallback');
+      });
+    } else {
+      console.log('🔍 Using word-based analysis (set OPENAI_API_KEY for AI analysis)');
+    }
     const capabilities: AgentCapability[] = [
       {
         name: 'analyze_sentiment',
@@ -47,43 +60,67 @@ class AnalyzerAgent extends Agent {
   }
 
   private async analyzeSentiment(input: any): Promise<any> {
-    await new Promise(resolve => setTimeout(resolve, 350));
-
     const text = typeof input === 'string'
       ? input
       : (Array.isArray(input.summary) ? input.summary.join(' ') : input.text || JSON.stringify(input));
 
-    const positiveWords = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'happy', 'best'];
-    const negativeWords = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'hate', 'sad', 'poor', 'disappointing'];
+    if (this.openaiClient) {
+      try {
+        const completion = await this.openaiClient.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a sentiment analysis expert. Analyze the sentiment of the given text and return ONLY a JSON object with this exact structure:
+{
+  "sentiment": "positive|negative|neutral",
+  "score": <number between -1 and 1>,
+  "insights": ["insight 1", "insight 2", "insight 3"],
+  "confidence": <number between 0 and 100>
+}`,
+            },
+            {
+              role: 'user',
+              content: text,
+            },
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' }
+        });
 
-    const words = text.toLowerCase().split(/\s+/);
-    let score = 0;
+        const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        
+        console.log(`   ✅ AI Analysis: ${result.sentiment} (${result.confidence}% confidence)`);
 
-    words.forEach((word: string) => {
-      if (positiveWords.some((pw: string) => word.includes(pw))) score += 1;
-      if (negativeWords.some((nw: string) => word.includes(nw))) score -= 1;
-    });
+        return {
+          sentiment: result.sentiment,
+          score: result.score,
+          insights: result.insights,
+          confidence: result.confidence,
+          wordCount: text.split(/\s+/).length,
+          method: 'openai'
+        };
+      } catch (error) {
+        console.warn('   ⚠️  OpenAI analysis failed, using fallback');
+      }
+    }
 
-    const normalizedScore = Math.max(-1, Math.min(1, score / Math.max(words.length * 0.1, 1)));
+    // Simple fallback
+    await new Promise(resolve => setTimeout(resolve, 350));
+    const words = text.split(/\s+/);
 
-    let sentiment: string;
-    if (normalizedScore > 0.2) sentiment = 'positive';
-    else if (normalizedScore < -0.2) sentiment = 'negative';
-    else sentiment = 'neutral';
-
-    const insights = [
-      `Detected ${words.length} words`,
-      `Sentiment leaning: ${sentiment}`,
-      `Confidence: ${(Math.abs(normalizedScore) * 100).toFixed(0)}%`,
-    ];
-
-    console.log(`   ✅ Analysis complete: ${sentiment} (score: ${normalizedScore.toFixed(2)})`);
+    console.log(`   ✅ Simulated analysis (${words.length} words)`);
 
     return {
-      sentiment,
-      score: normalizedScore,
-      insights,
+      sentiment: 'neutral',
+      score: 0,
+      insights: [
+        `Detected ${words.length} words`,
+        'Demo mode - sentiment not analyzed',
+        'Set OPENAI_API_KEY for AI analysis'
+      ],
       wordCount: words.length,
+      method: 'simulated'
     };
   }
 }

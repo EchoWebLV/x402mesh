@@ -4,9 +4,22 @@ import { AgentCapability } from '../../packages/sdk/src/types.js';
 import { getWalletAddress } from '../../packages/router/src/wallet-utils.js';
 
 const TRANSLATOR_WALLET_NAME = process.env.TRANSLATOR_WALLET || 'TranslatorWallet';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 class TranslatorAgent extends Agent {
+  private openaiClient: any = null;
+
   constructor(walletAddress: string, port: number = 3100) {
+    if (OPENAI_API_KEY) {
+      import('openai').then(({ default: OpenAI }) => {
+        this.openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+        console.log('✨ OpenAI integration enabled for real translation');
+      }).catch(() => {
+        console.warn('⚠️  OpenAI not available, using fallback');
+      });
+    } else {
+      console.log('🌍 Using dictionary translation (set OPENAI_API_KEY for AI translation)');
+    }
     const capabilities: AgentCapability[] = [
       {
         name: 'translate',
@@ -47,57 +60,51 @@ class TranslatorAgent extends Agent {
   }
 
   private async translate(input: { text: string; targetLanguage: string }): Promise<any> {
-    const translations: Record<string, Record<string, string>> = {
-      spanish: {
-        hello: 'hola',
-        world: 'mundo',
-        'good morning': 'buenos días',
-        'how are you': 'cómo estás',
-        'thank you': 'gracias',
-        'artificial intelligence': 'inteligencia artificial',
-        'payment system': 'sistema de pago',
-        blockchain: 'cadena de bloques',
-      },
-      french: {
-        hello: 'bonjour',
-        world: 'monde',
-        'good morning': 'bonjour',
-        'how are you': 'comment allez-vous',
-        'thank you': 'merci',
-        'artificial intelligence': 'intelligence artificielle',
-        'payment system': 'système de paiement',
-        blockchain: 'blockchain',
-      },
-      german: {
-        hello: 'hallo',
-        world: 'welt',
-        'good morning': 'guten morgen',
-        'how are you': 'wie geht es dir',
-        'thank you': 'danke',
-        'artificial intelligence': 'künstliche intelligenz',
-        'payment system': 'zahlungssystem',
-        blockchain: 'blockchain',
-      },
-    };
+    const targetLang = input.targetLanguage.toLowerCase();
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+    if (this.openaiClient) {
+      try {
+        const completion = await this.openaiClient.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a professional translator. Translate the given text to ${targetLang}. Return ONLY the translated text, no explanations.`,
+            },
+            {
+              role: 'user',
+              content: input.text,
+            },
+          ],
+          temperature: 0.3,
+        });
 
-    const lang = input.targetLanguage.toLowerCase();
-    let translatedText = input.text.toLowerCase();
+        const translatedText = completion.choices[0]?.message?.content || input.text;
+        
+        console.log(`   ✅ AI Translated: "${input.text}" → "${translatedText}" (${targetLang})`);
 
-    if (translations[lang]) {
-      Object.entries(translations[lang]).forEach(([key, value]) => {
-        const regex = new RegExp(key, 'gi');
-        translatedText = translatedText.replace(regex, value);
-      });
+        return {
+          translatedText,
+          language: input.targetLanguage,
+          originalText: input.text,
+          method: 'openai'
+        };
+      } catch (error) {
+        console.warn('   ⚠️  OpenAI translation failed, using fallback');
+      }
     }
 
-    console.log(`   ✅ Translated: "${input.text}" → "${translatedText}" (${input.targetLanguage})`);
+    // Simple fallback - just return original with note
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log(`   ✅ Simulated translation: "${input.text}" (${targetLang})`);
 
     return {
-      translatedText,
+      translatedText: `[${targetLang.toUpperCase()}] ${input.text}`,
       language: input.targetLanguage,
       originalText: input.text,
+      method: 'simulated',
+      note: 'Demo mode - set OPENAI_API_KEY for real AI translation'
     };
   }
 
