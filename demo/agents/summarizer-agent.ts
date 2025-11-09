@@ -26,8 +26,17 @@ class SummarizerAgent extends Agent {
       {
         name: 'summarize',
         description: 'Summarize long text into concise bullet points',
-        inputSchema: { text: 'string', maxBullets: 'number' },
-        outputSchema: { summary: 'string[]', wordCount: 'number' },
+        schema: 'text_processing_v1',  // ✨ Standard schema for auto-chaining
+        inputSchema: { 
+          text: 'string',
+          language: 'string',
+          metadata: 'object'
+        },
+        outputSchema: { 
+          text: 'string',
+          language: 'string',
+          metadata: 'object'
+        },
         pricing: {
           amount: 0.015,
           currency: 'SOL',
@@ -61,9 +70,10 @@ class SummarizerAgent extends Agent {
     throw new Error(`Unknown capability: ${capability}`);
   }
 
-  private async summarize(input: { text: string; maxBullets?: number }): Promise<any> {
-    const text = typeof input === 'string' ? input : (input.translatedText || input.text || JSON.stringify(input));
-    const maxBullets = input.maxBullets || 3;
+  private async summarize(input: any): Promise<any> {
+    const text = typeof input === 'string' ? input : (input.text || JSON.stringify(input));
+    const maxBullets = input.metadata?.maxBullets || 3;
+    const language = input.language || 'en';
 
     if (this.openaiClient) {
       try {
@@ -90,11 +100,15 @@ class SummarizerAgent extends Agent {
         console.log(`   ✅ AI Summarized ${wordCount} words into ${summary.length} points (OpenAI)`);
 
         return {
-          summary,
-          wordCount,
-          originalLength: text.length,
-          compressionRatio: (summary.join(' ').length / text.length * 100).toFixed(1) + '%',
-          method: 'openai',
+          text: summary.join('\n'),  // ✨ Standard schema field
+          language,
+          metadata: {
+            bulletPoints: summary,
+            wordCount,
+            originalLength: text.length,
+            compressionRatio: (summary.join(' ').length / text.length * 100).toFixed(1) + '%',
+            method: 'openai'
+          }
         };
       } catch (error) {
         console.warn('   ⚠️  OpenAI failed, using fallback:', error);
@@ -109,11 +123,15 @@ class SummarizerAgent extends Agent {
     console.log(`   ✅ Summarized ${wordCount} words into ${summary.length} points (fallback)`);
 
     return {
-      summary,
-      wordCount,
-      originalLength: text.length,
-      compressionRatio: (summary.join(' ').length / text.length * 100).toFixed(1) + '%',
-      method: 'sentence-extraction',
+      text: summary.join('\n'),  // ✨ Standard schema field
+      language,
+      metadata: {
+        bulletPoints: summary,
+        wordCount,
+        originalLength: text.length,
+        compressionRatio: (summary.join(' ').length / text.length * 100).toFixed(1) + '%',
+        method: 'sentence-extraction'
+      }
     };
   }
 }

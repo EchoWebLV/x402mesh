@@ -24,8 +24,17 @@ class AnalyzerAgent extends Agent {
       {
         name: 'analyze_sentiment',
         description: 'Analyze sentiment and tone of text',
-        inputSchema: { text: 'string' },
-        outputSchema: { sentiment: 'string', score: 'number', insights: 'string[]' },
+        schema: 'analysis_v1',  // ✨ Standard schema for auto-chaining
+        inputSchema: { 
+          text: 'string',
+          analysis_type: 'string',
+          metadata: 'object'
+        },
+        outputSchema: { 
+          result: 'object',
+          confidence: 'number',
+          metadata: 'object'
+        },
         pricing: {
           amount: 0.012,
           currency: 'SOL',
@@ -88,17 +97,21 @@ class AnalyzerAgent extends Agent {
           response_format: { type: 'json_object' }
         });
 
-        const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        const analysisResult = JSON.parse(completion.choices[0]?.message?.content || '{}');
         
-        console.log(`   ✅ AI Analysis: ${result.sentiment} (${result.confidence}% confidence)`);
+        console.log(`   ✅ AI Analysis: ${analysisResult.sentiment} (${analysisResult.confidence}% confidence)`);
 
         return {
-          sentiment: result.sentiment,
-          score: result.score,
-          insights: result.insights,
-          confidence: result.confidence,
-          wordCount: text.split(/\s+/).length,
-          method: 'openai'
+          result: {  // ✨ Standard schema field
+            sentiment: analysisResult.sentiment,
+            score: analysisResult.score,
+            insights: analysisResult.insights
+          },
+          confidence: analysisResult.confidence / 100,  // normalized to 0-1
+          metadata: {
+            wordCount: text.split(/\s+/).length,
+            method: 'openai'
+          }
         };
       } catch (error) {
         console.warn('   ⚠️  OpenAI analysis failed, using fallback');
@@ -112,15 +125,20 @@ class AnalyzerAgent extends Agent {
     console.log(`   ✅ Simulated analysis (${words.length} words)`);
 
     return {
-      sentiment: 'neutral',
-      score: 0,
-      insights: [
-        `Detected ${words.length} words`,
-        'Demo mode - sentiment not analyzed',
-        'Set OPENAI_API_KEY for AI analysis'
-      ],
-      wordCount: words.length,
-      method: 'simulated'
+      result: {  // ✨ Standard schema field
+        sentiment: 'neutral',
+        score: 0,
+        insights: [
+          `Detected ${words.length} words`,
+          'Demo mode - sentiment not analyzed',
+          'Set OPENAI_API_KEY for AI analysis'
+        ]
+      },
+      confidence: 0.5,
+      metadata: {
+        wordCount: words.length,
+        method: 'simulated'
+      }
     };
   }
 }

@@ -6,6 +6,9 @@ import { PaymentRouter } from './payment-router.js';
 import { verifyPaymentOnChain } from './signature-verifier.js';
 import axios from 'axios';
 import { Connection } from '@solana/web3.js';
+import { resolveTemplateVariables, hasTemplateVariables } from './template-resolver.js';
+import { areSchemasCompatible, mapBetweenSchemas } from './standard-schemas.js';
+import { validateChain } from './chain-validator.js';
 
 const app = express();
 // Enable real Solana transactions with REAL_TRANSACTIONS=true environment variable
@@ -144,6 +147,31 @@ app.get('/payments/:transactionId', (req, res) => {
   }
 });
 
+// Validate a chain before execution
+app.post('/payments/chain/validate', async (req, res) => {
+  try {
+    const { chain } = req.body;
+
+    if (!chain || !Array.isArray(chain)) {
+      return res.status(400).json({ error: 'Chain array required' });
+    }
+
+    // Validate the chain
+    const validation = await validateChain(chain, async (agentId: string) => {
+      try {
+        const response = await axios.get(`${REGISTRY_URL}/agents/${agentId}`);
+        return response.data;
+      } catch {
+        return null;
+      }
+    });
+
+    res.json(validation);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Execute a chain of agent calls with automatic payment routing
 app.post('/payments/chain', async (req, res) => {
   const startTime = Date.now();
@@ -211,8 +239,42 @@ app.post('/payments/chain', async (req, res) => {
       completedPayments.push({ payment, agent });
       totalCost += capability.pricing.amount;
       
-      // Call the agent
-      const input: any = i === 0 ? step.input : results[i - 1];
+      // Determine input using hybrid approach
+      let input: any;
+      
+      if (i === 0) {
+        // First step: use provided input
+        input = step.input;
+      } else {
+        // Subsequent steps: check for template variables, schema compatibility, or explicit input
+        if (step.input && hasTemplateVariables(step.input)) {
+          // Has template variables: resolve them
+          console.log(`   🔗 Step ${i}: Resolving template variables`);
+          input = resolveTemplateVariables(step.input, results);
+        } else if (step.input) {
+          // Explicit input provided (no templates): use as-is
+          console.log(`   📝 Step ${i}: Using explicit input`);
+          input = step.input;
+        } else {
+          // No input specified: try auto-chaining with schema compatibility
+          const prevCapability = chain[i - 1].capability;
+          const prevAgent = await axios.get(`${REGISTRY_URL}/agents/${chain[i - 1].agentId}`);
+          const prevCap = prevAgent.data.capabilities.find((c: any) => c.name === prevCapability);
+          
+          const prevSchema = prevCap?.schema;
+          const currentSchema = capability.schema;
+          
+          if (prevSchema && currentSchema && areSchemasCompatible(prevSchema, currentSchema)) {
+            // Compatible schemas: auto-map
+            console.log(`   ✨ Step ${i}: Auto-chaining (${prevSchema} → ${currentSchema})`);
+            input = mapBetweenSchemas(results[i - 1], prevSchema, currentSchema);
+          } else {
+            // No schema compatibility: pass previous result as-is (legacy behavior)
+            console.log(`   ⚠️  Step ${i}: No schema match, passing raw output`);
+            input = results[i - 1];
+          }
+        }
+      }
       
       try {
         const response: any = await axios.post(`${agent.endpoint}/execute`, {

@@ -24,8 +24,18 @@ class TranslatorAgent extends Agent {
       {
         name: 'translate',
         description: 'Translate text between languages',
-        inputSchema: { text: 'string', targetLanguage: 'string' },
-        outputSchema: { translatedText: 'string', language: 'string' },
+        schema: 'text_processing_v1',  // ✨ Standard schema for auto-chaining
+        inputSchema: { 
+          text: 'string', 
+          language: 'string',  // source language (optional)
+          targetLanguage: 'string',
+          metadata: 'object'
+        },
+        outputSchema: { 
+          text: 'string',  // translated text (follows standard)
+          language: 'string',  // target language
+          metadata: 'object'
+        },
         pricing: {
           amount: 0.01,
           currency: 'SOL',
@@ -84,10 +94,12 @@ class TranslatorAgent extends Agent {
         console.log(`   ✅ AI Translated: "${input.text}" → "${translatedText}" (${targetLang})`);
 
         return {
-          translatedText,
+          text: translatedText,  // ✨ Standard schema field
           language: input.targetLanguage,
-          originalText: input.text,
-          method: 'openai'
+          metadata: {
+            originalText: input.text,
+            method: 'openai'
+          }
         };
       } catch (error) {
         console.warn('   ⚠️  OpenAI translation failed, using fallback');
@@ -100,11 +112,13 @@ class TranslatorAgent extends Agent {
     console.log(`   ✅ Simulated translation: "${input.text}" (${targetLang})`);
 
     return {
-      translatedText: `[${targetLang.toUpperCase()}] ${input.text}`,
+      text: `[${targetLang.toUpperCase()}] ${input.text}`,  // ✨ Standard schema field
       language: input.targetLanguage,
-      originalText: input.text,
-      method: 'simulated',
-      note: 'Demo mode - set OPENAI_API_KEY for real AI translation'
+      metadata: {
+        originalText: input.text,
+        method: 'simulated',
+        note: 'Demo mode - set OPENAI_API_KEY for real AI translation'
+      }
     };
   }
 

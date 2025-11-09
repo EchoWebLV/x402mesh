@@ -1,504 +1,748 @@
-# 🚀 DEPLOYMENT GUIDE
+# Deployment Guide
 
-This guide covers both devnet (for testing) and mainnet (for production) deployment.
+Complete guide for deploying x402mesh to production.
 
 ---
 
-## ⚡ Quick Devnet Deployment (Hackathon)
+## Table of Contents
+
+1. [Local Development](#local-development)
+2. [Production Deployment](#production-deployment)
+3. [Environment Variables](#environment-variables)
+4. [Database Setup](#database-setup)
+5. [Solana Configuration](#solana-configuration)
+6. [Monitoring](#monitoring)
+7. [Troubleshooting](#troubleshooting)
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- PostgreSQL 14+ (optional)
+- Solana CLI (optional, for wallet management)
+
+### Quick Start
 
 ```bash
-# 1. Setup
-npm run setup:real
+# Clone repository
+git clone https://github.com/yourusername/agent-2-agent-infra.git
+cd agent-2-agent-infra
 
-# 2. Fund wallets
-npm run fund:wallets
-# OR manually: https://faucet.solana.com/
+# Install dependencies
+npm install
 
-# 3. Run demo
-npm run demo:chain
+# Build packages
+npm run build
+
+# Start all services
+./scripts/start-all.sh
 ```
 
-**Use this for your hackathon demo!**
+### Individual Services
 
----
+```bash
+# Terminal 1: Registry
+cd packages/registry
+npm run build
+node dist/index.js
 
-## 🚨 MAINNET DEPLOYMENT GUIDE
+# Terminal 2: Router
+cd packages/router
+npm run build
+node dist/index.js
 
-## ⚠️ CRITICAL WARNINGS
+# Terminal 3: Demo Agents
+npx tsx demo/agents/translator-agent.ts
+npx tsx demo/agents/summarizer-agent.ts
+npx tsx demo/agents/analyzer-agent.ts
 
-### **MAINNET = REAL MONEY**
-
-- 💰 **Real SOL** - Costs ~$20-30 per SOL
-- 💵 **Real USDC** - Actual USD value
-- 🔒 **Irreversible** - Transactions cannot be undone
-- 💸 **Gas Fees** - Every transaction costs real money
-- 🎯 **Production** - Users depend on this
-
-**DO NOT** deploy to mainnet unless you:
-- ✅ Tested extensively on devnet
-- ✅ Understand the costs
-- ✅ Have security measures in place
-- ✅ Are ready for production use
-
----
-
-## 🎯 Mainnet vs Devnet
-
-| Feature | Devnet | Mainnet |
-|---------|--------|---------|
-| **SOL** | FREE (faucet) | $20-30 each |
-| **USDC** | Test tokens (fake) | REAL USD |
-| **Transactions** | Reversible (can restart) | IRREVERSIBLE |
-| **Gas Fees** | FREE | ~$0.0001 per tx |
-| **Purpose** | Testing | Production |
-| **Risk** | Zero | HIGH |
-
----
-
-## 📋 Pre-Deployment Checklist
-
-### 1. Testing
-- [ ] All features tested on devnet
-- [ ] Load testing completed
-- [ ] Error handling verified
-- [ ] Edge cases covered
-- [ ] Security audit done
-
-### 2. Security
-- [ ] Replace file-based wallets with secure key management
-- [ ] Set up rate limiting
-- [ ] Add API authentication
-- [ ] Enable CORS restrictions
-- [ ] Review all code for vulnerabilities
-- [ ] Set up monitoring and alerts
-
-### 3. Legal & Compliance
-- [ ] Terms of Service written
-- [ ] Privacy Policy created
-- [ ] KYC/AML compliance (if required)
-- [ ] Business entity registered
-- [ ] Insurance obtained (if handling large amounts)
-
-### 4. Operations
-- [ ] Monitoring dashboards set up
-- [ ] Alert system configured
-- [ ] Backup strategy in place
-- [ ] Incident response plan ready
-- [ ] Customer support system set up
-- [ ] Documentation complete
-
-### 5. Financial
-- [ ] Budget for gas fees ($5-50/month)
-- [ ] RPC provider selected and paid ($0-100/month)
-- [ ] OpenAI credits funded (if using AI)
-- [ ] Emergency fund for issues
-
----
-
-## 💰 Cost Breakdown
-
-### Initial Setup Costs:
-```
-SOL for gas: ~0.1 SOL × 4 wallets = 0.4 SOL (~$10)
-USDC for testing: $10-100
-RPC provider setup: $0-50
-Total: ~$20-160
+# Terminal 4: Web UI
+cd web
+npm run dev
 ```
 
-### Monthly Operating Costs:
-```
-Gas fees: ~$5-50 (depends on usage)
-RPC provider: $0-100 (depends on tier)
-OpenAI: ~$1-50 (depends on usage)
-Monitoring: $0-100 (optional)
-Total: ~$6-300/month
-```
+### Environment Setup
 
-### Revenue (if charging users):
-```
-Translator: $0.01 per request
-Summarizer: $0.02 per request
-Analyzer: $0.015 per request
+Create `.env` in project root:
 
-100 requests/day = ~$4.50/day = $135/month
-1000 requests/day = ~$45/day = $1,350/month
+```bash
+# Database (optional - falls back to in-memory)
+DATABASE_URL=postgresql://user:password@localhost:5432/x402mesh
+
+# Services
+REGISTRY_PORT=3001
+ROUTER_PORT=3002
+REGISTRY_URL=http://localhost:3001
+ROUTER_URL=http://localhost:3002
+
+# Solana
+REAL_TRANSACTIONS=false
+SOLANA_RPC_URL=https://api.devnet.solana.com
+
+# Optional: OpenAI for real AI capabilities
+OPENAI_API_KEY=sk-...
+
+# Agent Wallets (auto-generated if not set)
+TRANSLATOR_WALLET=TranslatorWallet
+SUMMARIZER_WALLET=SummarizerWallet
+ANALYZER_WALLET=AnalyzerWallet
 ```
 
 ---
 
-## 🔐 Secure Wallet Management
+## Production Deployment
 
-### ⚠️ NEVER use file-based keypairs on mainnet!
+### Option 1: Docker Deployment
 
-### Recommended Solutions:
+#### Build Images
 
-**1. Hardware Wallet (Best for small projects)**
-- Ledger or Trezor
-- Manual signing required
-- Very secure
-- Free after hardware purchase
+```bash
+# Build all services
+docker-compose build
 
-**2. MPC Wallet (Best for production)**
-- Fireblocks
-- Coinbase Prime
-- Qredo
-- No single point of failure
-- Automated signing
-- $500-5000/month
+# Start services
+docker-compose up -d
 
-**3. Cloud KMS (Good middle ground)**
-- AWS KMS
-- Google Cloud KMS
-- HashiCorp Vault
-- Automated signing
-- ~$1-10/month
+# View logs
+docker-compose logs -f
+```
 
-**4. Environment Variables (MINIMUM security)**
-- Not recommended for production
-- Use only for testing mainnet
-- Better than file-based, but still risky
+#### docker-compose.yml
 
-### Migration from File-Based:
+```yaml
+version: '3.8'
 
-```typescript
-// DON'T DO THIS ON MAINNET:
-const keypair = Keypair.fromSecretKey(
-  new Uint8Array(JSON.parse(fs.readFileSync('wallet.json')))
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: x402mesh
+      POSTGRES_USER: x402mesh
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  registry:
+    build:
+      context: .
+      dockerfile: packages/registry/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://x402mesh:${DB_PASSWORD}@postgres:5432/x402mesh
+      REGISTRY_PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+
+  router:
+    build:
+      context: .
+      dockerfile: packages/router/Dockerfile
+    environment:
+      REGISTRY_URL: http://registry:3001
+      ROUTER_PORT: 3002
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL}
+      REAL_TRANSACTIONS: ${REAL_TRANSACTIONS}
+    ports:
+      - "3002:3002"
+    depends_on:
+      - registry
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    environment:
+      NEXT_PUBLIC_REGISTRY_URL: http://registry:3001
+      NEXT_PUBLIC_ROUTER_URL: http://router:3002
+    ports:
+      - "3000:3000"
+    depends_on:
+      - router
+
+volumes:
+  postgres_data:
+```
+
+### Option 2: Cloud Deployment (AWS/GCP/Azure)
+
+#### AWS Example
+
+```bash
+# Install AWS CLI
+aws configure
+
+# Create ECR repositories
+aws ecr create-repository --repository-name x402mesh-registry
+aws ecr create-repository --repository-name x402mesh-router
+aws ecr create-repository --repository-name x402mesh-web
+
+# Build and push images
+docker build -t x402mesh-registry -f packages/registry/Dockerfile .
+docker tag x402mesh-registry:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/x402mesh-registry:latest
+docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/x402mesh-registry:latest
+
+# Deploy to ECS/EKS
+# Use terraform or CloudFormation templates
+```
+
+### Option 3: VPS Deployment (DigitalOcean, Linode, etc.)
+
+```bash
+# SSH into server
+ssh user@your-server.com
+
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install PostgreSQL
+sudo apt-get install postgresql postgresql-contrib
+
+# Clone and setup
+git clone https://github.com/yourusername/agent-2-agent-infra.git
+cd agent-2-agent-infra
+npm install
+npm run build
+
+# Setup systemd services (see below)
+```
+
+#### Systemd Service Files
+
+**/etc/systemd/system/x402mesh-registry.service**:
+```ini
+[Unit]
+Description=x402mesh Registry
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=x402mesh
+WorkingDirectory=/opt/x402mesh
+ExecStart=/usr/bin/node packages/registry/dist/index.js
+Restart=always
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/x402mesh/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**/etc/systemd/system/x402mesh-router.service**:
+```ini
+[Unit]
+Description=x402mesh Router
+After=network.target x402mesh-registry.service
+
+[Service]
+Type=simple
+User=x402mesh
+WorkingDirectory=/opt/x402mesh
+ExecStart=/usr/bin/node packages/router/dist/index.js
+Restart=always
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/x402mesh/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# Enable and start services
+sudo systemctl enable x402mesh-registry
+sudo systemctl enable x402mesh-router
+sudo systemctl start x402mesh-registry
+sudo systemctl start x402mesh-router
+
+# Check status
+sudo systemctl status x402mesh-registry
+sudo systemctl status x402mesh-router
+```
+
+---
+
+## Environment Variables
+
+### Required
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
+| `REGISTRY_PORT` | Registry service port | `3001` |
+| `ROUTER_PORT` | Router service port | `3002` |
+| `SOLANA_RPC_URL` | Solana RPC endpoint | `https://api.mainnet-beta.solana.com` |
+
+### Optional
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REAL_TRANSACTIONS` | Enable real Solana transactions | `false` |
+| `OPENAI_API_KEY` | OpenAI API key for AI agents | - |
+| `REGISTRY_URL` | Registry service URL | `http://localhost:3001` |
+| `ROUTER_URL` | Router service URL | `http://localhost:3002` |
+| `NODE_ENV` | Environment mode | `development` |
+
+### Agent-Specific
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TRANSLATOR_WALLET` | Translator wallet name | `TranslatorWallet` |
+| `SUMMARIZER_WALLET` | Summarizer wallet name | `SummarizerWallet` |
+| `ANALYZER_WALLET` | Analyzer wallet name | `AnalyzerWallet` |
+
+---
+
+## Database Setup
+
+### PostgreSQL Installation
+
+#### Ubuntu/Debian
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+#### macOS
+```bash
+brew install postgresql@14
+brew services start postgresql@14
+```
+
+#### Docker
+```bash
+docker run -d \
+  --name x402mesh-postgres \
+  -e POSTGRES_DB=x402mesh \
+  -e POSTGRES_USER=x402mesh \
+  -e POSTGRES_PASSWORD=secretpassword \
+  -p 5432:5432 \
+  -v postgres_data:/var/lib/postgresql/data \
+  postgres:14
+```
+
+### Database Initialization
+
+```bash
+# Create database
+createdb x402mesh
+
+# Initialize schema
+psql x402mesh < packages/registry/init-db.sql
+
+# Verify
+psql x402mesh -c "\dt"
+```
+
+### Database Migrations
+
+```sql
+-- init-db.sql
+CREATE TABLE IF NOT EXISTS agents (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  version TEXT,
+  endpoint TEXT NOT NULL,
+  wallet_address TEXT NOT NULL,
+  capabilities JSONB NOT NULL,
+  tags TEXT[],
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
-// DO THIS INSTEAD:
-import { getKeypairFromEnvironment } from '@solana-developers/helpers';
-const keypair = getKeypairFromEnvironment('WALLET_PRIVATE_KEY');
-
-// OR BETTER: Use hardware wallet or MPC
+CREATE INDEX idx_agents_tags ON agents USING GIN(tags);
+CREATE INDEX idx_agents_capabilities ON agents USING GIN(capabilities);
 ```
 
 ---
 
-## 🚀 Deployment Steps
+## Solana Configuration
 
-### Step 1: Prepare Configuration
-
-```bash
-# Copy mainnet config
-cp .env.mainnet .env
-
-# Edit .env and configure:
-# - SOLANA_NETWORK=mainnet-beta
-# - SOLANA_RPC_URL=<your-paid-rpc>
-# - Add your mainnet wallet keys (securely!)
-# - Set USDC_MINT_ADDRESS to mainnet USDC
-```
-
-### Step 2: Get Real USDC
-
-**Official Mainnet USDC:**
-```
-Mint: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
-```
-
-**How to get USDC:**
-1. Buy on Coinbase/Binance
-2. Withdraw to Solana address
-3. Or swap SOL → USDC on Jupiter/Raydium
-
-### Step 3: Fund Mainnet Wallets
+### Devnet (Testing)
 
 ```bash
-# You need SOL in each wallet:
-# - 0.1 SOL minimum per wallet
-# - 0.5 SOL recommended per wallet
+# .env
+SOLANA_RPC_URL=https://api.devnet.solana.com
+REAL_TRANSACTIONS=true
 
-# Buy SOL on:
-# - Coinbase
-# - Binance
-# - FTX
-# - Phantom wallet (built-in)
+# USDC devnet mint (create your own or use existing)
+# See: https://spl.solana.com/token
 ```
 
-### Step 4: Deploy Services
+### Mainnet (Production)
 
 ```bash
-# Build production
-npm run build
+# .env
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+REAL_TRANSACTIONS=true
 
-# Deploy to your server
-# Use PM2, Docker, or cloud provider
-
-# With PM2:
-pm2 start packages/registry/dist/index.js --name registry
-pm2 start packages/router/dist/index.js --name router
-pm2 start demo/agents/translator-agent.js --name translator
-pm2 start demo/agents/summarizer-agent.js --name summarizer
-pm2 start demo/agents/analyzer-agent.js --name analyzer
-
-# Save PM2 config
-pm2 save
-pm2 startup
+# Mainnet USDC mint
+USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
 ```
 
-### Step 5: Deploy Web UI
+### Wallet Setup
 
 ```bash
-# Build web UI
-cd web
-npm run build
+# Install Solana CLI
+sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
 
-# Deploy to Vercel/Netlify/your host
-# Set environment variables:
-# - NEXT_PUBLIC_API_URL=https://your-api-domain.com
-# - NEXT_PUBLIC_REGISTRY_URL=https://your-registry-domain.com
+# Generate wallets for agents
+solana-keygen new --outfile ~/.config/solana/translator-wallet.json
+solana-keygen new --outfile ~/.config/solana/summarizer-wallet.json
+solana-keygen new --outfile ~/.config/solana/analyzer-wallet.json
+
+# Fund wallets (devnet)
+solana airdrop 2 $(solana-keygen pubkey ~/.config/solana/translator-wallet.json) --url devnet
+
+# Fund wallets (mainnet)
+# Transfer SOL manually to wallet addresses
 ```
 
-### Step 6: Test with Small Amounts
+### RPC Providers
+
+#### Free Options
+- Solana Public RPC: `https://api.mainnet-beta.solana.com` (rate-limited)
+- Devnet: `https://api.devnet.solana.com`
+
+#### Paid Options (Recommended for Production)
+- **Helius**: https://helius.xyz - 100k req/day free
+- **QuickNode**: https://quicknode.com - Fast, reliable
+- **Alchemy**: https://alchemy.com - Enterprise-grade
+- **Triton**: https://triton.one - High performance
 
 ```bash
-# Send 1 small transaction
-# Verify on Solana Explorer
-# Check all systems working
-# Then gradually increase
+# Example with Helius
+SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_API_KEY
 ```
 
 ---
 
-## 🔧 Production Configuration
+## Monitoring
 
-### Recommended RPC Providers:
+### Health Checks
 
-**Helius (Best for production)**
-- URL: `https://mainnet.helius-rpc.com/?api-key=YOUR_KEY`
-- Free tier: 100k requests/month
-- Paid: $50-500/month
-- Features: Webhooks, analytics
-
-**Alchemy**
-- URL: `https://solana-mainnet.g.alchemy.com/v2/YOUR_KEY`
-- Free tier: Limited
-- Paid: $49-499/month
-- Features: Monitoring, alerts
-
-**QuickNode**
-- URL: Custom endpoint
-- Paid only: $49-999/month
-- Features: High performance, dedicated
-
-**Ankr (Budget option)**
-- URL: `https://rpc.ankr.com/solana/YOUR_KEY`
-- Free tier: Available
-- Paid: $25-250/month
-
-### Security Settings:
-
-```env
-# Production .env
-CORS_ORIGINS=https://yourdomain.com
-RATE_LIMIT=30
-API_SECRET=<strong-random-string>
-LOG_LEVEL=info
-VERBOSE_TRANSACTIONS=false
-ENABLE_MONITORING=true
-```
-
----
-
-## 📊 Monitoring & Alerts
-
-### Set Up Monitoring:
-
-**1. Sentry (Error Tracking)**
 ```bash
-npm install @sentry/node
-# Add SENTRY_DSN to .env
+# Registry health
+curl http://localhost:3001/health
+
+# Router health
+curl http://localhost:3002/health
+
+# Agent health
+curl http://localhost:3100/health  # Translator
+curl http://localhost:3101/health  # Summarizer
+curl http://localhost:3102/health  # Analyzer
 ```
 
-**2. Datadog (Performance)**
+### Logging
+
+#### Application Logs
+
 ```bash
-# Add DATADOG_API_KEY to .env
-# Track response times, errors, usage
+# View registry logs
+journalctl -u x402mesh-registry -f
+
+# View router logs
+journalctl -u x402mesh-router -f
+
+# Docker logs
+docker-compose logs -f registry
+docker-compose logs -f router
 ```
 
-**3. Custom Alerts**
+#### Log Management
+
+Use a log aggregation service:
+
+```bash
+# Example with Winston + CloudWatch
+npm install winston winston-cloudwatch
+
+# packages/registry/src/logger.ts
+import winston from 'winston';
+import CloudWatchTransport from 'winston-cloudwatch';
+
+export const logger = winston.createLogger({
+  transports: [
+    new winston.transports.Console(),
+    new CloudWatchTransport({
+      logGroupName: 'x402mesh-registry',
+      logStreamName: 'production'
+    })
+  ]
+});
+```
+
+### Metrics
+
+#### Prometheus + Grafana
+
 ```typescript
-// Alert on errors
-if (error) {
-  await fetch(process.env.ALERT_WEBHOOK_URL, {
-    method: 'POST',
-    body: JSON.stringify({ error, timestamp: new Date() })
-  });
+// packages/router/src/metrics.ts
+import promClient from 'prom-client';
+
+const register = new promClient.Registry();
+
+export const paymentCounter = new promClient.Counter({
+  name: 'x402mesh_payments_total',
+  help: 'Total number of payments processed',
+  registers: [register]
+});
+
+export const chainDuration = new promClient.Histogram({
+  name: 'x402mesh_chain_duration_seconds',
+  help: 'Chain execution duration',
+  registers: [register]
+});
+
+// Expose metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+```
+
+---
+
+## Security
+
+### Best Practices
+
+1. **Environment Variables**
+   - Never commit `.env` files
+   - Use secret management (AWS Secrets Manager, HashiCorp Vault)
+   - Rotate credentials regularly
+
+2. **HTTPS/TLS**
+   ```nginx
+   # nginx config
+   server {
+     listen 443 ssl;
+     server_name api.x402mesh.com;
+     
+     ssl_certificate /etc/letsencrypt/live/x402mesh.com/fullchain.pem;
+     ssl_certificate_key /etc/letsencrypt/live/x402mesh.com/privkey.pem;
+     
+     location / {
+       proxy_pass http://localhost:3001;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+     }
+   }
+   ```
+
+3. **Rate Limiting**
+   ```typescript
+   import rateLimit from 'express-rate-limit';
+   
+   const limiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // 15 minutes
+     max: 100 // limit each IP to 100 requests per windowMs
+   });
+   
+   app.use('/api/', limiter);
+   ```
+
+4. **Input Validation**
+   ```typescript
+   import { z } from 'zod';
+   
+   const agentSchema = z.object({
+     name: z.string().min(1).max(100),
+     walletAddress: z.string().length(44),
+     capabilities: z.array(z.object({
+       name: z.string(),
+       pricing: z.object({
+         amount: z.number().positive(),
+         currency: z.enum(['USDC', 'SOL'])
+       })
+     }))
+   });
+```
+
+---
+
+## Backup & Recovery
+
+### Database Backups
+
+```bash
+# Automated daily backups
+0 2 * * * pg_dump x402mesh | gzip > /backups/x402mesh-$(date +\%Y\%m\%d).sql.gz
+
+# Restore from backup
+gunzip < backup.sql.gz | psql x402mesh
+```
+
+### Wallet Backups
+
+```bash
+# Backup wallet keypairs securely
+tar -czf wallets-backup.tar.gz ~/.config/solana/*.json
+
+# Encrypt backup
+gpg -c wallets-backup.tar.gz
+
+# Store encrypted backup in secure location
+# (AWS S3 with encryption, encrypted USB drive, etc.)
+```
+
+---
+
+## Scaling
+
+### Horizontal Scaling
+
+```yaml
+# docker-compose.yml with replicas
+services:
+  router:
+    deploy:
+      replicas: 3
+    environment:
+      REGISTRY_URL: http://registry:3001
+
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - router
+```
+
+### Load Balancing
+
+```nginx
+# nginx.conf
+upstream router_backend {
+  server router1:3002;
+  server router2:3002;
+  server router3:3002;
+}
+
+server {
+  listen 80;
+  location / {
+    proxy_pass http://router_backend;
+  }
 }
 ```
 
-### What to Monitor:
-
-- ✅ Transaction success rate
-- ✅ API response times
-- ✅ Wallet balances (alert if low)
-- ✅ Error rates
-- ✅ Usage patterns
-- ✅ Cost per transaction
-- ✅ RPC response times
-
 ---
 
-## 💸 Cost Optimization
+## Troubleshooting
 
-### Reduce Gas Fees:
-- Batch transactions when possible
-- Use compute budget optimization
-- Cache frequently accessed data
+### Common Issues
 
-### Reduce RPC Costs:
-- Use free tier for development
-- Cache blockchain data
-- Only query when necessary
-- Use websockets instead of polling
-
-### Reduce OpenAI Costs:
-- Cache common summaries
-- Use smaller models (gpt-3.5-turbo)
-- Set max_tokens limits
-- Fallback to local algorithms
-
----
-
-## 🆘 Incident Response
-
-### If Something Goes Wrong:
-
-**1. Immediate Actions:**
+#### Port Already in Use
 ```bash
-# Stop all services
-pm2 stop all
+# Find process using port
+lsof -i :3001
 
-# Check wallet balances
-solana balance <wallet-address> --url mainnet-beta
-
-# Review recent transactions
-# Check Solana Explorer
+# Kill process
+kill -9 <PID>
 ```
 
-**2. Common Issues:**
-
-**Insufficient Funds:**
-- Top up SOL immediately
-- Set up balance alerts
-
-**High Error Rate:**
-- Check RPC provider status
-- Switch to backup RPC
-- Review error logs
-
-**Security Breach:**
-- Rotate all keys immediately
-- Transfer funds to new wallets
-- Notify users if needed
-- File incident report
-
-**3. Recovery:**
-- Fix the issue
-- Test on devnet
-- Gradually restart services
-- Monitor closely
-
----
-
-## 📝 Mainnet Launch Checklist
-
-### Week Before Launch:
-- [ ] Final security audit
-- [ ] Load testing at expected scale
-- [ ] Backup systems tested
-- [ ] Monitoring dashboards ready
-- [ ] Team briefed on procedures
-
-### Launch Day:
-- [ ] Deploy to production
-- [ ] Small test transactions
-- [ ] Monitor for 1 hour
-- [ ] Gradually increase usage
-- [ ] Team on standby
-
-### Week After Launch:
-- [ ] Daily monitoring
-- [ ] User feedback collected
-- [ ] Performance metrics reviewed
-- [ ] Costs tracked
-- [ ] Issues documented
-
----
-
-## 🎓 Best Practices
-
-### DO:
-- ✅ Test everything on devnet first
-- ✅ Start with small amounts
-- ✅ Use paid RPC providers
-- ✅ Set up monitoring
-- ✅ Have emergency procedures
-- ✅ Keep backups
-- ✅ Document everything
-
-### DON'T:
-- ❌ Use file-based wallets
-- ❌ Skip testing
-- ❌ Ignore errors
-- ❌ Deploy without monitoring
-- ❌ Handle users' private keys
-- ❌ Store sensitive data in code
-- ❌ Forget to set rate limits
-
----
-
-## 📞 Support Resources
-
-**Solana:**
-- Docs: https://docs.solana.com/
-- Discord: https://discord.gg/solana
-
-**RPC Providers:**
-- Helius: support@helius.dev
-- Alchemy: support@alchemy.com
-- QuickNode: support@quicknode.com
-
-**Security:**
-- Solana Security: https://github.com/solana-labs/security-audits
-- Smart Contract Auditors: Trail of Bits, Certik, etc.
-
----
-
-## 🚨 FINAL WARNING
-
-**Mainnet deployment is serious business.**
-
-You are handling:
-- Real user funds
-- Real money
-- Real transactions
-- Real responsibility
-
-**Only deploy when you're truly ready.**
-
----
-
-## ✅ Quick Commands (Mainnet)
-
+#### Database Connection Failed
 ```bash
-# Check balance
-solana balance <address> --url mainnet-beta
+# Check PostgreSQL is running
+systemctl status postgresql
 
-# Send SOL
-solana transfer <to-address> <amount> --url mainnet-beta
+# Check connection
+psql -h localhost -U x402mesh -d x402mesh
 
-# Check transaction
-solana confirm <signature> --url mainnet-beta
+# Check firewall
+sudo ufw allow 5432/tcp
+```
 
-# View account
-solana account <address> --url mainnet-beta
+#### Solana RPC Timeout
+```bash
+# Test RPC connection
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' \
+  https://api.devnet.solana.com
+
+# Switch to different RPC provider
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+```
+
+#### Out of Memory
+```bash
+# Increase Node.js memory
+NODE_OPTIONS="--max-old-space-size=4096" node dist/index.js
+
+# Monitor memory
+htop
+```
+
+### Support
+
+- **Documentation:** [GUIDE.md](./GUIDE.md)
+- **Issues:** GitHub Issues
+- **Logs:** Check application and system logs
+
+---
+
+## Production Checklist
+
+Before going live:
+
+- [ ] Environment variables configured
+- [ ] PostgreSQL database set up and backed up
+- [ ] Solana wallets funded and secured
+- [ ] HTTPS/TLS certificates installed
+- [ ] Rate limiting enabled
+- [ ] Monitoring and alerts configured
+- [ ] Backup strategy in place
+- [ ] Load testing completed
+- [ ] Security audit performed
+- [ ] Documentation updated
+
+---
+
+## Performance Tuning
+
+### Database Optimization
+
+```sql
+-- Add indexes for common queries
+CREATE INDEX idx_agents_updated_at ON agents(updated_at DESC);
+CREATE INDEX idx_agents_endpoint ON agents(endpoint);
+
+-- Analyze query performance
+EXPLAIN ANALYZE SELECT * FROM agents WHERE tags @> ARRAY['translation'];
+```
+
+### Node.js Optimization
+
+```javascript
+// Use clustering for multi-core CPUs
+import cluster from 'cluster';
+import os from 'os';
+
+if (cluster.isPrimary) {
+  const numCPUs = os.cpus().length;
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+} else {
+  // Worker process runs the server
+  startServer();
+}
 ```
 
 ---
 
-**Built for Solana x402 Hackathon**  
-**⚠️ Use mainnet at your own risk**  
-**November 2025**
+Ready to deploy! 🚀
 

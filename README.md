@@ -1,442 +1,351 @@
-# 🤖 Agent-to-Agent Payment Router
+# x402mesh - Agent Payment Infrastructure
 
-**Built for Solana x402 Hackathon** - A complete infrastructure for AI agents to discover, communicate, and transact autonomously.
+[![License](https://img.shields.io/badge/license-MIT-blue)]() [![Solana](https://img.shields.io/badge/solana-devnet-purple)]()
 
-[![Status](https://img.shields.io/badge/status-ready-brightgreen)]() [![License](https://img.shields.io/badge/license-MIT-blue)]() [![Solana](https://img.shields.io/badge/solana-devnet-purple)]()
+A complete infrastructure platform enabling AI agents to discover, transact, and collaborate autonomously using Solana blockchain.
 
-**🎬 Demo Video:** [Add your 3-minute demo link here]
+## What is x402mesh?
+
+x402mesh is **the missing infrastructure for the agent economy**. It provides:
+
+- 🔍 **Agent Registry** - Discover and register AI agents with searchable capabilities
+- 💰 **Payment Router** - Automatic micropayments with x402 protocol on Solana
+- ⛓️ **Hybrid Chain Execution** - Agents compose seamlessly via auto-chaining + template variables
+- 🛠️ **Developer SDK** - Build payment-enabled agents in minutes
+- 🌐 **Web Interface** - Beautiful UI with Phantom wallet integration
+
+### The Composability Breakthrough
+
+**Problem:** Agents built by different developers can't work together because their input/output formats don't match.
+
+**Solution:** x402mesh implements a hybrid approach:
+- **Auto-chaining** - Standard schemas enable automatic composition
+- **Template variables** - `{{step0.field}}` for precise field mapping
+- **Validation** - Pre-execution checks catch errors before payment
+
+This makes agents truly composable in a decentralized marketplace.
 
 ---
 
-## 🎯 What This Is
-
-The Agent-to-Agent Payment Router is the **"npm for AI agents"** - a comprehensive platform that enables:
-
-- 🔍 **Agent Discovery**: Find and register AI agents with searchable capabilities
-- 💰 **Payment Routing**: Automatic micropayments using x402 protocol on Solana
-- 🔗 **Agent Chaining**: Orchestrate complex workflows across multiple agents
-- 💸 **Payment Splits**: Distribute payments across agent chains automatically
-
-## 🏆 Hackathon Tracks
-
-This project targets multiple tracks:
-
-- ✅ **Best x402 Dev Tool** ($10k) - Complete SDK for easy agent development
-- ✅ **Best x402 Agent Application** ($20k) - AI-powered agents with real payments
-- ✅ **Best Use of CASH** ($10k) - Phantom wallet integration in web UI
-- ✅ **Best AgentPay Demo** ($5k) - USDC micropayments for AI services
-
-**Total Prize Potential: $45,000+**
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-
 - Node.js 18+
 - npm or yarn
-- Phantom Wallet (for web UI)
+- Optional: Phantom Wallet (for web UI)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/yourusername/agent-2-agent-infra.git
 cd agent-2-agent-infra
-
-# Install dependencies
-npm install
-
-# Start PostgreSQL (optional - falls back to in-memory)
-npm run db:start
-
-# Build packages
-npm run build
+npm install && npm run build
 ```
 
-### 🌐 NEW: Web UI
-
-**Beautiful visual interface with Phantom wallet integration!**
+### Run the Demo
 
 ```bash
-# Start the web UI (includes Phantom wallet)
+# Start all services
+./scripts/start-all.sh
+
+# In another terminal, run the demo
+node test-hybrid-chain.js
+```
+
+### Try the Web UI
+
+```bash
+# Start web interface
 npm run web
 
 # Open http://localhost:3000
 ```
 
-Features:
-- 🦊 **Phantom Wallet Integration** - Connect your wallet with one click
-- 📊 **Visual Agent Chains** - Watch agents collaborate in real-time
-- 💰 **Payment Tracking** - See all transactions on Solana Explorer
-- 🎨 **Modern Design** - Beautiful UI with animations
+---
 
-### Run the Demo
+## Core Features
 
-**Option 1: Web UI** (Recommended)
-```bash
-# Terminal 1 - Start backend
-npm run start:all
+### 1. Agent Registry
 
-# Terminal 2 - Start web UI
-npm run web
-```
+Register and discover agents with full capability metadata:
 
-Open http://localhost:3000 and:
-- Connect your Phantom wallet
-- Execute an agent chain
-- Watch real-time collaboration
-- See payment tracking
+```typescript
+import { RegistryClient } from 'x402mesh-sdk';
 
-**Option 2: Interactive CLI Demo**
-```bash
-npm run demo:chain
-```
+const registry = new RegistryClient();
 
-This runs a beautiful CLI demo showing:
-- 3 agents working together
-- Automatic payment routing
-- Agent chaining (Translate → Summarize → Analyze)
-- Live transaction tracking
+// Register your agent
+await registry.registerAgent({
+  name: 'My Agent',
+  description: 'Does amazing things',
+  capabilities: [{
+    name: 'process',
+    schema: 'text_processing_v1',  // Standard schema for auto-chaining
+    pricing: { amount: 0.01, currency: 'USDC', model: 'per_request' }
+  }],
+  walletAddress: 'your-solana-wallet',
+  endpoint: 'https://your-agent.com'
+});
 
-**Option 3: Real Solana Transactions**
-```bash
-npm run setup:wallets
-npm run demo:real
-```
-
-This uses **real Solana devnet** with verifiable transactions.
-
-## 📚 Documentation
-
-### **Getting Started:**
-- **[QUICKSTART.md](./QUICKSTART.md)** - 30-second setup
-- **[SETUP.md](./SETUP.md)** - Complete setup guide
-- **[Getting Started](./docs/GETTING_STARTED.md)** - Full tutorial
-
-### **Technical Docs:**
-- **[API Reference](./docs/API.md)** - Complete API docs
-- **[Architecture](./docs/ARCHITECTURE.md)** - System design
-- **[Web UI Guide](./docs/WEB_UI.md)** - Frontend docs
-- **[Solana Integration](./docs/SOLANA_INTEGRATION.md)** - Blockchain details
-
-### **Deployment:**
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment guide
-- **[FINAL_CHECKLIST.md](./FINAL_CHECKLIST.md)** - Pre-submission checklist
-
-### **Submission:**
-- **[HACKATHON_SUBMISSION.md](./HACKATHON_SUBMISSION.md)** - Official submission doc
-
-## 📁 Architecture
-
-```
-agent-2-agent-infra/
-├── packages/
-│   ├── sdk/              # Agent SDK for developers
-│   ├── registry/         # Agent Discovery Registry
-│   └── router/           # Payment Router with x402
-├── demo/
-│   ├── agents/           # Demo agents (Translator, Summarizer, Analyzer)
-│   ├── run-demo.js       # Full demo script
-│   └── chain-demo.js     # Interactive chain demo
-└── docs/                 # Documentation
-```
-
-## 🛠️ Core Components
-
-### 1. Agent Discovery Registry
-
-A centralized registry where agents can:
-- Register their capabilities and pricing
-- Announce their services
-- Be discovered by other agents
-- Maintain heartbeat status
-
-**API Endpoints:**
-```
-POST   /agents/register       - Register a new agent
-GET    /agents/discover       - Find agents by capability/tags
-GET    /agents/:id            - Get agent details
-POST   /agents/:id/heartbeat  - Update agent status
-DELETE /agents/:id            - Deregister agent
+// Find agents
+const agents = await registry.searchAgents({ tag: 'translation' });
 ```
 
 ### 2. Payment Router
 
-Handles all financial transactions between agents:
-- Process individual payments
-- Route payment chains
-- Split payments across multiple recipients
-- Track transaction history
-
-**API Endpoints:**
-```
-POST   /payments/process      - Process a payment
-POST   /payments/chain        - Execute agent chain with payments
-POST   /payments/split        - Split payment among agents
-GET    /payments/:id          - Get payment status
-```
-
-### 3. Agent SDK
-
-Developer-friendly SDK for building payment-enabled agents:
+Process payments with x402 protocol on Solana:
 
 ```typescript
-import { Agent, AgentCapability } from '@x402mesh/sdk';
+import { PaymentClient } from 'x402mesh-sdk';
 
-class MyAgent extends Agent {
-  constructor() {
-    super({
-      name: 'My Cool Agent',
-      description: 'Does amazing things',
-      capabilities: [{
-        name: 'do_thing',
-        description: 'Does a thing',
-        pricing: { amount: 0.01, currency: 'USDC', model: 'per_request' }
-      }],
-      walletAddress: 'YOUR_WALLET',
-      port: 3100,
-    });
-  }
+const client = new PaymentClient();
 
-  async execute(capability, input) {
-    // Your logic here
-    return { result: 'done!' };
-  }
-}
+const result = await client.processPayment({
+  from: 'buyer-wallet',
+  to: 'seller-wallet',
+  amount: 0.01,
+  currency: 'USDC',
+  serviceId: 'translation'
+});
 ```
 
-## 💡 Demo Agents
+### 3. Hybrid Chain Execution
 
-### 🌍 Translator Agent
-- **Port**: 3100
-- **Capability**: Translate text between languages (Spanish, French, German)
-- **Implementation**: Dictionary-based translation (expandable to real API)
-- **Price**: $0.01 USDC per request
+Chain agents together with automatic composition:
 
-### 📝 Summarizer Agent
-- **Port**: 3101
-- **Capability**: Summarize text into bullet points
-- **Implementation**: Sentence extraction algorithm
-- **Price**: $0.02 USDC per request
-- **Note**: Can integrate OpenAI API with `OPENAI_API_KEY` env variable
-
-### 🔍 Analyzer Agent
-- **Port**: 3102
-- **Capability**: Analyze sentiment and tone
-- **Implementation**: Word-based sentiment analysis
-- **Price**: $0.015 USDC per request
-
-## 🔗 Agent Chaining Example
-
-```javascript
-// Automatically route payments and data through multiple agents
-const result = await paymentClient.executeChain({
-  paymentSource: 'YOUR_WALLET',
+```typescript
+// Auto-chaining (agents use standard schemas)
+const result = await client.executeChain({
+  paymentSource: 'your-wallet',
   chain: [
     {
-      agentId: 'translator-id',
+      agentId: 'translator-agent',
       capability: 'translate',
-      input: { text: 'Hello', targetLanguage: 'spanish' }
+      input: { text: 'Hello world', targetLanguage: 'es' }
     },
     {
-      agentId: 'summarizer-id',
-      capability: 'summarize',
-      input: {} // Receives translator output
-    },
-    {
-      agentId: 'analyzer-id',
-      capability: 'analyze_sentiment',
-      input: {} // Receives summarizer output
+      agentId: 'summarizer-agent',
+      capability: 'summarize'
+      // ✨ No input needed - auto-chains from translator!
     }
   ]
 });
 
-// Result includes:
-// - results: Array of outputs from each agent
-// - payments: All transaction details
-// - totalCost: Sum of all agent fees
-// - executionTime: Total time in ms
+// Template variables (precise field mapping)
+const result = await client.executeChain({
+  paymentSource: 'your-wallet',
+  chain: [
+    {
+      agentId: 'translator-agent',
+      capability: 'translate',
+      input: { text: 'I love this!', targetLanguage: 'es' }
+    },
+    {
+      agentId: 'analyzer-agent',
+      capability: 'analyze_sentiment',
+      input: {
+        text: '{{step0.text}}'  // Extract translated text
+      }
+    }
+  ]
+});
 ```
 
-## 🎬 Demo Output
+### 4. Build Agents in Minutes
 
-When you run `npm run demo:chain`, you'll see:
+```typescript
+import { Agent } from 'x402mesh-sdk';
 
-```
-╔═══════════════════════════════════════════════════════╗
-║   🤖 AGENT CHAIN DEMO - Real-time Conversation      ║
-╚═══════════════════════════════════════════════════════╝
+class MyAgent extends Agent {
+  constructor(walletAddress: string) {
+    super({
+      name: 'My Agent',
+      capabilities: [{
+        name: 'process',
+        schema: 'text_processing_v1',
+        inputSchema: { text: 'string' },
+        outputSchema: { text: 'string' },
+        pricing: { amount: 0.01, currency: 'USDC', model: 'per_request' }
+      }],
+      walletAddress,
+      port: 3100
+    });
+  }
 
-📝 SCENARIO 1: Tech Discussion
-══════════════════════════════════════════════════════
+  async execute(capability: string, input: any) {
+    if (capability === 'process') {
+      return { text: input.text.toUpperCase() };
+    }
+    throw new Error('Unknown capability');
+  }
+}
 
-💬 Original Message:
-   "Artificial intelligence is revolutionizing blockchain..."
-
-🔄 Executing Agent Chain:
-   1. 🌍 Translator → Translate to spanish
-   2. 📝 Summarizer → Create bullet points
-   3. 🔍 Analyzer → Analyze sentiment
-
-📊 RESULTS:
-─────────────────────────────────────────────────────
-
-🌍 Translation (spanish):
-   "inteligencia artificial is revolutionizing blockchain..."
-
-📝 Summary:
-   1. inteligencia artificial is revolutionizing blockchain
-   2. Payment systems are becoming more efficient
-   3. Smart contracts enable trustless transactions
-   (33.2% compression)
-
-🔍 Sentiment Analysis:
-   Sentiment: POSITIVE
-   Score: 0.15
-   • Detected 15 words
-   • Sentiment leaning: positive
-   • Confidence: 15%
-
-💰 Payment Summary:
-   Total Cost: $0.0450 USDC
-   Payments Made: 3
-   Execution Time: 1234ms
-   1. Translator: $0.01 USDC
-   2. Summarizer: $0.02 USDC
-   3. Analyzer: $0.015 USDC
+// That's it! SDK handles payments, HTTP 402, registration, etc.
+const agent = new MyAgent('your-wallet');
+await agent.start();
 ```
 
-## 🌟 Key Features
+---
 
-### For Developers
+## Architecture
 
-✅ **Simple SDK** - Build agents in minutes, not hours  
-✅ **Automatic Discovery** - Agents find each other automatically  
-✅ **Built-in Payments** - x402 protocol integration out of the box  
-✅ **Type Safety** - Full TypeScript support  
-✅ **Hot Reload** - Development mode with auto-restart  
+```
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   Agent A   │◄────►│   Payment   │◄────►│   Agent B   │
+│  (Seller)   │      │   Router    │      │  (Buyer)    │
+└─────────────┘      └──────┬──────┘      └─────────────┘
+                            │
+                     ┌──────▼──────┐
+                     │   Registry  │
+                     │  (Discovery)│
+                     └─────────────┘
+                            │
+                     ┌──────▼──────┐
+                     │   Solana    │
+                     │  Blockchain │
+                     └─────────────┘
+```
 
-### For Agents
+### Components
 
-✅ **Self-Registration** - Announce capabilities automatically  
-✅ **Heartbeat Monitoring** - Automatic health checks  
-✅ **Flexible Pricing** - Per-request, per-token, or per-minute  
-✅ **Chain Participation** - Work with other agents seamlessly  
+- **Registry** (`packages/registry`) - Agent discovery service with PostgreSQL
+- **Router** (`packages/router`) - Payment processing with x402 protocol
+- **SDK** (`packages/sdk`) - TypeScript SDK for building agents
+- **Web UI** (`web/`) - Next.js interface with Phantom wallet
 
-### For Users
+---
 
-✅ **Transparent Pricing** - Know costs upfront  
-✅ **Payment Tracking** - Full transaction history  
-✅ **Chain Orchestration** - Complex workflows made simple  
-✅ **Real-time Updates** - See agents working in real-time  
+## Standard Schemas
 
-## ✅ Current Features (v0.1.0-alpha.1)
+Agents declare standard schemas for automatic composition:
 
-- ✅ **Real Solana Integration**: Devnet-ready with SPL token support
-- ✅ **PostgreSQL Database**: Persistent agent registry
-- ✅ **CLI Tool**: Register any x402 agent with one command
-- ✅ **Health Checks**: Verify agent availability before payment
-- ✅ **Auto-Refunds**: Automatic refunds if agent fails
-- ✅ **Phantom Wallet**: Full integration in web UI
-- ✅ **x402 Protocol Compliant**: Standard PaymentRequirements, X-PAYMENT headers, base64 encoding
-- ✅ **Agent Chaining**: Multi-agent workflows with payment routing
-- ✅ **Beautiful Web UI**: Professional interface with real-time updates
-- ✅ **Test Coverage**: 14 comprehensive tests
+### `text_processing_v1`
+```typescript
+input: { text: string, language?: string, metadata?: object }
+output: { text: string, language?: string, metadata?: object }
+```
 
-### x402 Standard Compliance
+### `analysis_v1`
+```typescript
+input: { text: string, analysis_type?: string, metadata?: object }
+output: { result: object, confidence: number, metadata?: object }
+```
 
-Implements the [official Solana x402 specification](https://solana.com/developers/guides/getstarted/intro-to-x402):
-- ✅ Standard 402 Payment Required responses with `x402Version: 1`
-- ✅ PaymentRequirements structure (scheme, network, recipient, amount)
-- ✅ X-PAYMENT-RESPONSE headers (base64 encoded)
-- ✅ On-chain payment verification via Solana
-- ✅ Compatible with other x402 SDKs (Corbits, Coinbase, ACK)
+### `image_processing_v1`
+```typescript
+input: { image_url?: string, image_base64?: string, prompt?: string }
+output: { image_url: string, image_base64?: string, metadata?: object }
+```
 
-## 🔮 Future Enhancements
+Agents using compatible schemas auto-chain without manual mapping!
 
-### Phase 2 (Post-Hackathon)
-- [ ] Mainnet deployment with real USDC
-- [ ] OpenAI/Anthropic integration for real AI
-- [ ] Visa TAP protocol support
-- [ ] ATXP multi-protocol routing
-- [ ] Rate limiting and quotas
+---
 
-### Phase 3
-- [ ] Agent reputation system
-- [ ] Trustless escrow
-- [ ] Dispute resolution
-- [ ] Agent marketplace UI
-- [ ] Analytics dashboard
-- [ ] Mobile app
+## Demo Agents
 
-## 📊 Technical Stack
+Three working agents included:
 
-- **Backend**: Node.js + TypeScript + Express
-- **Blockchain**: Solana (devnet ready)
-- **Protocol**: x402 (HTTP 402 Payment Required)
-- **Architecture**: Microservices
-- **Package Manager**: npm workspaces (monorepo)
+- **Translator** (port 3100) - Multi-language translation with OpenAI
+- **Summarizer** (port 3101) - Text summarization
+- **Analyzer** (port 3102) - Sentiment analysis
 
-## 🧪 Testing
+All use standard schemas and work together seamlessly.
 
+---
+
+## Documentation
+
+- **[GUIDE.md](./GUIDE.md)** - Complete developer guide
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Setup and deployment instructions
+- **[CHANGELOG.md](./CHANGELOG.md)** - Version history
+
+---
+
+## Technology Stack
+
+- **Backend:** Node.js + TypeScript + Express
+- **Blockchain:** Solana Web3.js + SPL Token
+- **Frontend:** Next.js 14 + React 18 + Tailwind CSS
+- **Database:** PostgreSQL (optional, falls back to in-memory)
+- **Wallet:** Solana Wallet Adapter + Phantom
+- **AI:** OpenAI GPT-4o-mini (optional)
+
+---
+
+## Use Cases
+
+### For Agent Developers
+- Build payment-enabled agents with standard SDK
+- Get discovered through registry
+- Earn from AI services automatically
+
+### For Agent Users
+- Discover agents by capability
+- Pay per use with micropayments
+- Chain multiple agents into workflows
+
+### For Enterprises
+- Build custom agent marketplaces
+- Enable internal agent collaboration
+- Track and manage agent transactions
+
+---
+
+## Production Deployment
+
+### Devnet (Current)
 ```bash
-# Run payment router tests (14 tests)
-npm run test -w @x402mesh/router
-
-# Run SDK tests
-npm run test -w @x402mesh/sdk
-
-# Integration tests
-npm run test:integration
-
-# E2E tests
-npm run test:e2e
+# Uses Solana devnet for testing
+export REAL_TRANSACTIONS=true
+npm run start:all
 ```
 
-**Current Coverage:** 14 tests passing ✅
-- Payment processing
-- Health checks
-- Automatic refunds
-- Chain execution
-- Split payments
+### Mainnet (Production-Ready)
+```bash
+# Switch to mainnet USDC
+export SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+export USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+export REAL_TRANSACTIONS=true
+npm run start:all
+```
 
-## 🤝 Contributing
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete production guide.
 
-This is an open-source project for the Solana x402 Hackathon. Contributions welcome!
+---
+
+## Contributing
+
+Contributions welcome! Please read our contributing guidelines.
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Submit a pull request
-
-## 📝 License
-
-MIT License - See LICENSE file for details
-
-## 🏅 Hackathon Submission
-
-**Project Name**: Agent-to-Agent Payment Router  
-**Tracks**: Best x402 Agent Application, Best x402 Dev Tool, Best Multi-Protocol Agent  
-**Solana Network**: Devnet ready, Mainnet compatible  
-**Demo Video**: [Link to 3-minute demo]  
-
-## 🙋 Support
-
-- **Issues**: GitHub Issues
-- **Discord**: [Your Discord]
-- **Email**: [Your Email]
-
-## 🎉 Acknowledgments
-
-Built with support from:
-- Solana Foundation
-- x402 Protocol Team
-- Hackathon Sponsors
-- Open Source Community
+4. Add tests
+5. Submit a pull request
 
 ---
 
-**Made with ❤️ for the Solana x402 Hackathon**
+## License
 
-*Enabling the Agent Economy, One Transaction at a Time*
+MIT License - see [LICENSE](./LICENSE) for details.
 
+---
+
+## Links
+
+- **GitHub:** https://github.com/yourusername/agent-2-agent-infra
+- **NPM:** `npm install x402mesh-sdk`
+- **Documentation:** [GUIDE.md](./GUIDE.md)
+- **Issues:** https://github.com/yourusername/agent-2-agent-infra/issues
+
+---
+
+## Status
+
+✅ **Production Ready** - Core infrastructure complete and tested  
+✅ **Devnet Deployed** - All services running on Solana devnet  
+🚧 **Mainnet Ready** - Ready for production deployment  
+
+---
+
+Built with ❤️ for the agent economy

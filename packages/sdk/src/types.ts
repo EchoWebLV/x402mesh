@@ -33,6 +33,7 @@ export interface AgentCapability {
   description: string;
   inputSchema: any;
   outputSchema: any;
+  schema?: string;  // Standard schema ID for auto-chaining (e.g., 'text_processing_v1')
   pricing: {
     amount: number;
     currency: 'USDC' | 'SOL';

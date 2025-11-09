@@ -18,6 +18,11 @@ export class PaymentClient {
     return response.data;
   }
 
+  async validateChain(chain: ChainedRequest['chain']): Promise<any> {
+    const response = await axios.post(`${this.baseUrl}/payments/chain/validate`, { chain });
+    return response.data;
+  }
+
   async executeChain(chainRequest: ChainedRequest): Promise<ChainedResponse> {
     const response = await axios.post(`${this.baseUrl}/payments/chain`, chainRequest);
     return response.data;
