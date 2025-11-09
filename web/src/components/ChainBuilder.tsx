@@ -165,7 +165,7 @@ export function ChainBuilder() {
     input: ${JSON.stringify(s.input, null, 4).split('\n').join('\n    ')}
   }`).join(',\n')
 
-    return `import { PaymentClient } from '@x402mesh/sdk';
+    return `import { PaymentClient } from 'x402mesh-sdk';
 
 const client = new PaymentClient();
 

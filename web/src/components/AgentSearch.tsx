@@ -266,16 +266,362 @@ export function AgentSearch() {
 
       {/* Quick Actions */}
       <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl p-6 border border-primary/30">
-        <h3 className="text-lg font-bold mb-2">💡 Have an x402 Agent?</h3>
+        <h3 className="text-lg font-bold mb-4">🚀 Build Your Own x402 Agent</h3>
         <p className="text-gray-300 mb-4">
-          Register your existing x402 API and make it discoverable to the network.
+          Create payment-enabled AI agents in minutes using our SDK. Your agent will automatically appear here once running.
         </p>
-        <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
-          <div className="text-gray-400"># Install CLI</div>
-          <div className="text-primary">npm install -g @x402mesh/cli</div>
-          <div className="text-gray-400 mt-2"># Register your agent</div>
-          <div className="text-primary">
-            x402mesh register --name "Your Agent" --endpoint https://your-api.com --wallet ABC...
+        
+        <div className="space-y-4">
+          {/* Step 1 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-primary text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">1</span>
+              <span className="font-semibold text-white">Install the SDK</span>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-3 font-mono text-sm ml-8">
+              <div className="flex items-center justify-between">
+                <span className="text-primary">npm install x402mesh-sdk</span>
+                <button
+                  onClick={() => handleCopy('npm install x402mesh-sdk', 'install')}
+                  className="text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedText === 'install' ? <Check className="w-4 h-4 text-green-500" /> : '📋'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-primary text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2</span>
+              <span className="font-semibold text-white">Create your agent</span>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-3 font-mono text-xs ml-8 overflow-x-auto">
+              <div className="flex items-end justify-between mb-2">
+                <span className="text-gray-500 text-xs">my-agent.js</span>
+                <button
+                  onClick={() => handleCopy(
+`import { Agent } from 'x402mesh-sdk';
+
+class MyAgent extends Agent {
+  constructor() {
+    super({
+      name: 'My Agent',
+      description: 'Does awesome things',
+      version: '1.0.0',
+      capabilities: [{
+        name: 'my_capability',
+        description: 'What it does',
+        pricing: { amount: 0.01, currency: 'USDC' }
+      }],
+      walletAddress: process.env.WALLET_ADDRESS,
+      registryUrl: '${REGISTRY_BASE}'
+    });
+  }
+
+  async executeCapability(name, input) {
+    // Your logic here
+    return { result: 'success', data: input };
+  }
+}
+
+const agent = new MyAgent();
+agent.start(3000);`,
+                    'code'
+                  )}
+                  className="text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedText === 'code' ? <Check className="w-4 h-4 text-green-500" /> : '📋 Copy'}
+                </button>
+              </div>
+              <pre className="text-blue-400">
+{`import { Agent } from 'x402mesh-sdk';
+
+class MyAgent extends Agent {
+  constructor() {
+    super({
+      name: 'My Agent',
+      description: 'Does awesome things',
+      version: '1.0.0',
+      capabilities: [{
+        name: 'my_capability',
+        description: 'What it does',
+        pricing: { amount: 0.01, currency: 'USDC' }
+      }],
+      walletAddress: process.env.WALLET_ADDRESS,
+      registryUrl: '${REGISTRY_BASE}'
+    });
+  }
+
+  async executeCapability(name, input) {
+    // Your logic here
+    return { result: 'success', data: input };
+  }
+}
+
+const agent = new MyAgent();
+agent.start(3000);`}
+              </pre>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-primary text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">3</span>
+              <span className="font-semibold text-white">Test locally</span>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-3 font-mono text-sm ml-8 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">REGISTRY_URL={REGISTRY_BASE} node my-agent.js</span>
+                <button
+                  onClick={() => handleCopy(`REGISTRY_URL=${REGISTRY_BASE} node my-agent.js`, 'run')}
+                  className="text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedText === 'run' ? <Check className="w-4 h-4 text-green-500" /> : '📋'}
+                </button>
+              </div>
+              <div className="text-gray-500 text-xs">
+                💡 Or set in .env: <span className="text-gray-400">REGISTRY_URL={REGISTRY_BASE}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 4 - Deploy & Register */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-primary text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">4</span>
+              <span className="font-semibold text-white">Deploy & register with CLI</span>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-3 ml-8 space-y-3">
+              
+              {/* Deploy first */}
+              <div className="text-xs">
+                <div className="text-white font-medium mb-2">A. Deploy your agent (choose one):</div>
+                <div className="text-gray-500 space-y-1">
+                  <div>• Railway, Render, Fly.io, Heroku, VPS, etc.</div>
+                  <div>• Make sure it has a public URL (e.g., https://my-agent.railway.app)</div>
+                  <div>• Keep it running 24/7</div>
+                </div>
+              </div>
+
+              {/* Register with CLI */}
+              <div className="border-t border-gray-800 pt-3">
+                <div className="text-white font-medium mb-2 text-xs">B. Register with the CLI to appear here:</div>
+                
+                <div className="bg-gray-950 rounded p-3 font-mono text-xs space-y-2">
+                  <div>
+                    <div className="text-gray-500"># Install CLI</div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-primary">npm install -g x402mesh-cli</span>
+                      <button
+                        onClick={() => handleCopy('npm install -g x402mesh-cli', 'cli-install')}
+                        className="text-gray-400 hover:text-white text-xs"
+                      >
+                        {copiedText === 'cli-install' ? <Check className="w-4 h-4 text-green-500" /> : '📋'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-gray-500"># Register your agent</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="text-primary">x402mesh register \\</div>
+                        <div className="text-primary ml-2">--name "My Agent" \\</div>
+                        <div className="text-primary ml-2">--endpoint https://my-agent.com \\</div>
+                        <div className="text-primary ml-2">--wallet YOUR_WALLET_ADDRESS \\</div>
+                        <div className="text-primary ml-2">--description "Does awesome things"</div>
+                      </div>
+                      <button
+                        onClick={() => handleCopy(
+                          'x402mesh register \\\n  --name "My Agent" \\\n  --endpoint https://my-agent.com \\\n  --wallet YOUR_WALLET_ADDRESS \\\n  --description "Does awesome things"',
+                          'register'
+                        )}
+                        className="text-gray-400 hover:text-white text-xs flex-shrink-0"
+                      >
+                        {copiedText === 'register' ? <Check className="w-4 h-4 text-green-500" /> : '📋'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-800 pt-2">
+                    <div className="text-gray-500"># Or use interactive mode</div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-primary">x402mesh register --interactive</span>
+                      <button
+                        onClick={() => handleCopy('x402mesh register --interactive', 'interactive')}
+                        className="text-gray-400 hover:text-white text-xs"
+                      >
+                        {copiedText === 'interactive' ? <Check className="w-4 h-4 text-green-500" /> : '📋'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Success message */}
+              <div className="bg-green-500/10 border border-green-500/30 rounded p-2">
+                <div className="text-xs text-green-400">
+                  ✨ Once registered, your agent will appear on this page immediately!
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CLI Discovery Tip */}
+          <div className="pt-3 border-t border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Terminal className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-400">💡 CLI Tip: Discover other agents</span>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-3 font-mono text-sm ml-6">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">x402mesh discover</span>
+                <button
+                  onClick={() => handleCopy('x402mesh discover', 'discover')}
+                  className="text-gray-400 hover:text-white text-xs"
+                >
+                  {copiedText === 'discover' ? <Check className="w-4 h-4 text-green-500" /> : '📋'}
+                </button>
+              </div>
+              <div className="text-gray-600 text-xs mt-1">Find and query agents from the command line</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* npm Package Cards */}
+      <div className="grid md:grid-cols-2 gap-4 mt-6">
+        {/* SDK Card */}
+        <div className="border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all bg-gradient-to-br from-blue-500/5 to-purple-500/5">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Code className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">x402mesh-sdk</h3>
+                <p className="text-xs text-gray-500">Build payment-enabled agents</p>
+              </div>
+            </div>
+            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">
+              v0.1.0-alpha.1
+            </span>
+          </div>
+
+          <p className="text-sm text-gray-400 mb-4">
+            TypeScript SDK for creating AI agents with built-in x402 payment capabilities on Solana.
+          </p>
+
+          <div className="space-y-3">
+            <div className="bg-gray-900 rounded-lg p-3 font-mono text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-blue-400">npm install x402mesh-sdk</span>
+                <button
+                  onClick={() => handleCopy('npm install x402mesh-sdk', 'sdk-install')}
+                  className="text-gray-400 hover:text-white"
+                >
+                  {copiedText === 'sdk-install' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs">
+              <a 
+                href="https://www.npmjs.com/package/x402mesh-sdk" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-gray-400 hover:text-blue-400 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                npm package
+              </a>
+              <a 
+                href="https://github.com/yordanlasonov/agent-2-agent-infra/tree/main/packages/sdk" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-gray-400 hover:text-blue-400 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                GitHub
+              </a>
+              <span className="text-gray-600">•</span>
+              <span className="text-gray-500">19.3 kB</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">TypeScript</span>
+              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">Solana</span>
+              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">x402</span>
+              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">AI Agents</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CLI Card */}
+        <div className="border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all bg-gradient-to-br from-green-500/5 to-teal-500/5">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                <Terminal className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">x402mesh-cli</h3>
+                <p className="text-xs text-gray-500">Command-line interface</p>
+              </div>
+            </div>
+            <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">
+              v0.1.0-alpha.1
+            </span>
+          </div>
+
+          <p className="text-sm text-gray-400 mb-4">
+            CLI tool for discovering, managing, and registering x402 AI agents on the network.
+          </p>
+
+          <div className="space-y-3">
+            <div className="bg-gray-900 rounded-lg p-3 font-mono text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-green-400">npm install -g x402mesh-cli</span>
+                <button
+                  onClick={() => handleCopy('npm install -g x402mesh-cli', 'cli-card-install')}
+                  className="text-gray-400 hover:text-white"
+                >
+                  {copiedText === 'cli-card-install' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs">
+              <a 
+                href="https://www.npmjs.com/package/x402mesh-cli" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-gray-400 hover:text-green-400 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                npm package
+              </a>
+              <a 
+                href="https://github.com/yordanlasonov/agent-2-agent-infra/tree/main/packages/cli" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-gray-400 hover:text-green-400 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                GitHub
+              </a>
+              <span className="text-gray-600">•</span>
+              <span className="text-gray-500">6.9 kB</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">CLI</span>
+              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">Discovery</span>
+              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 rounded text-xs">Registry</span>
+            </div>
           </div>
         </div>
       </div>
@@ -397,7 +743,7 @@ export function AgentSearch() {
                         <span className="text-xs font-semibold text-gray-400">2. Using the SDK</span>
                         <button
                           onClick={() => navigator.clipboard.writeText(
-                            `import { PaymentClient } from '@x402mesh/sdk';\n\nconst client = new PaymentClient();\nconst result = await client.callAgent(\n  '${selectedAgent.id}',\n  '${cap.name}',\n  { /* your input */ }\n);`
+                            `import { PaymentClient } from 'x402mesh-sdk';\n\nconst client = new PaymentClient();\nconst result = await client.callAgent(\n  '${selectedAgent.id}',\n  '${cap.name}',\n  { /* your input */ }\n);`
                           )}
                           className="text-xs text-gray-400 hover:text-white"
                         >
@@ -406,7 +752,7 @@ export function AgentSearch() {
                       </div>
                       <pre className="bg-gray-950 rounded p-3 text-xs overflow-x-auto">
                         <code className="text-blue-400">
-{`import { PaymentClient } from '@x402mesh/sdk';
+{`import { PaymentClient } from 'x402mesh-sdk';
 
 const client = new PaymentClient();
 const result = await client.callAgent(
