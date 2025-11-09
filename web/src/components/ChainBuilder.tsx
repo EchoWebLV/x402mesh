@@ -73,70 +73,33 @@ export function ChainBuilder() {
   }
 
   const buildChainFromPrompt = async (userPrompt: string, agentContext: any[]) => {
-    // Call backend API to generate chain (secure - API key on server)
-    try {
-      const response = await axios.post(`${API_BASE}/api/generate-chain`, {
-        prompt: userPrompt,
-        agents: agentContext
-      })
+    // Call Next.js API to generate chain (secure - API key on server)
+    const response = await axios.post('/api/generate-chain', {
+      prompt: userPrompt,
+      agents: agentContext
+    })
 
-      const aiResponse = response.data
-      
-      // Map AI response to our format
-      const selectedAgents = aiResponse.chain.map((step: any) => {
-        const agent = agents.find(a => a.id === step.agentId)
-        return {
-          agent,
-          capability: step.capability,
-          input: step.input,
-          reasoning: step.reasoning
-        }
-      }).filter((s: any) => s.agent) // Remove if agent not found
+    const aiResponse = response.data
+    
+    // Check if AI says agents are missing
+    if (aiResponse.error === 'missing_agents') {
+      throw new Error(aiResponse.message || 'Missing agents needed to complete this chain');
+    }
 
-      const totalCost = selectedAgents.reduce((sum, s) => {
-        const cap = s.agent.capabilities.find((c: any) => c.name === s.capability)
-        return sum + (cap?.pricing.amount || 0)
-      }, 0)
-
+    // Map AI response to our format
+    const selectedAgents = aiResponse.chain.map((step: any) => {
+      const agent = agents.find(a => a.id === step.agentId)
       return {
-        agents: selectedAgents,
-        totalCost,
-        code: generateCodeSnippet(selectedAgents, userPrompt),
-        curl: generateCurlCommand(selectedAgents),
-        reasoning: selectedAgents.map((s: any) => s.reasoning)
+        agent,
+        capability: step.capability,
+        input: step.input,
+        reasoning: step.reasoning
       }
-    } catch (error) {
-      console.error('AI generation failed, using fallback', error)
-      // Fallback to keyword matching if OpenAI fails
-      return buildChainKeywordFallback(userPrompt, agentContext)
-    }
-  }
+    }).filter((s: any) => s.agent) // Remove if agent not found
 
-  const buildChainKeywordFallback = (userPrompt: string, agentContext: any[]) => {
-    // Simple keyword matching fallback
-    const lowerPrompt = userPrompt.toLowerCase()
-    const selectedAgents: any[] = []
-
-    if (lowerPrompt.includes('image') || lowerPrompt.includes('generate')) {
-      const imgAgent = agents.find(a => a.name.includes('Image Generator'))
-      if (imgAgent) {
-        selectedAgents.push({
-          agent: imgAgent,
-          capability: 'generate_image',
-          input: { prompt: extractImagePrompt(userPrompt), style: 'realistic' }
-        })
-      }
-    }
-
-    if (lowerPrompt.includes('background') || lowerPrompt.includes('remove')) {
-      const bgAgent = agents.find(a => a.name.includes('Background Remover'))
-      if (bgAgent && selectedAgents.length > 0) {
-        selectedAgents.push({
-          agent: bgAgent,
-          capability: 'remove_background',
-          input: {}
-        })
-      }
+    // Check if we lost agents during mapping (shouldn't happen if AI followed rules)
+    if (selectedAgents.length === 0) {
+      throw new Error('Missing agents needed to complete this chain');
     }
 
     const totalCost = selectedAgents.reduce((sum, s) => {
@@ -148,15 +111,12 @@ export function ChainBuilder() {
       agents: selectedAgents,
       totalCost,
       code: generateCodeSnippet(selectedAgents, userPrompt),
-      curl: generateCurlCommand(selectedAgents)
+      curl: generateCurlCommand(selectedAgents),
+      reasoning: selectedAgents.map((s: any) => s.reasoning),
+      limitations: aiResponse.limitations
     }
   }
 
-  const extractImagePrompt = (userPrompt: string) => {
-    // Extract what to generate
-    const match = userPrompt.match(/(?:image|picture|generate)(?:\s+of)?\s+(?:a|an)?\s*(.+?)(?:\s+without|\s+with|$)/i)
-    return match ? match[1].trim() : userPrompt
-  }
 
   const generateCodeSnippet = (chain: any[], userPrompt: string) => {
     const chainArray = chain.map(s => `  {
@@ -260,6 +220,16 @@ console.log('Result:', result);
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
         >
+          {/* Limitations Warning */}
+          {result.limitations && (
+            <div className="border border-yellow-900/50 rounded-lg p-4 bg-yellow-900/10">
+              <div className="flex items-start gap-2">
+                <span className="text-yellow-500 text-sm">⚠️</span>
+                <p className="text-yellow-400 text-sm">{result.limitations}</p>
+              </div>
+            </div>
+          )}
+
           {/* Summary */}
           <div className="border border-gray-900 rounded-lg p-5">
             <h3 className="text-white font-medium mb-3">Generated Chain</h3>
