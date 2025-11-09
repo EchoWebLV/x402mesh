@@ -1,15 +1,42 @@
 {
-  "name": "@x402mesh/cli",
+  "name": "x402mesh-cli",
   "version": "0.1.0-alpha.1",
-  "description": "CLI tool for managing x402 agents",
+  "description": "Command-line tool for discovering and managing x402 AI agents on Solana",
   "type": "module",
   "bin": {
     "x402mesh": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/cli.ts"
+    "dev": "tsx watch src/cli.ts",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "cli",
+    "x402",
+    "solana",
+    "ai-agents",
+    "agent-discovery",
+    "blockchain",
+    "web3",
+    "agent-mesh"
+  ],
+  "author": "Yordan Lasonov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yordanlasonov/agent-2-agent-infra.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/yordanlasonov/agent-2-agent-infra/issues"
+  },
+  "homepage": "https://github.com/yordanlasonov/agent-2-agent-infra#readme",
   "dependencies": {
     "commander": "^11.1.0",
     "axios": "^1.6.2",
@@ -22,6 +49,9 @@
     "@types/inquirer": "^9.0.7",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
 

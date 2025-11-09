@@ -1,16 +1,44 @@
 {
-  "name": "@x402mesh/sdk",
+  "name": "x402mesh-sdk",
   "version": "0.1.0-alpha.1",
-  "description": "SDK for building AI agents with payment capabilities",
+  "description": "SDK for building AI agents with payment capabilities on Solana using x402 protocol",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "solana",
+    "x402",
+    "ai-agents",
+    "payments",
+    "blockchain",
+    "micropayments",
+    "agent-sdk",
+    "web3",
+    "usdc"
+  ],
+  "author": "Yordan Lasonov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yordanlasonov/agent-2-agent-infra.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/yordanlasonov/agent-2-agent-infra/issues"
+  },
+  "homepage": "https://github.com/yordanlasonov/agent-2-agent-infra#readme",
   "dependencies": {
     "@solana/web3.js": "^1.87.6",
     "axios": "^1.6.2",
@@ -22,6 +50,9 @@
     "@types/node": "^20.10.0",
     "typescript": "^5.3.3",
     "vitest": "^1.6.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
 
