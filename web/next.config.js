@@ -10,6 +10,11 @@ const nextConfig = {
   ],
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // Export as static site
+  output: 'export',
+  images: {
+    unoptimized: true,
   }
 }
 
