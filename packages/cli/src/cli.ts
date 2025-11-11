@@ -11,7 +11,7 @@ const REGISTRY_URL = process.env.REGISTRY_URL || 'http://localhost:3001';
 program
   .name('x402mesh')
   .description('CLI tool for managing x402 agents')
-  .version('0.1.0-alpha.1');
+  .version('0.2.0');
 
 // Register command
 program
@@ -174,6 +174,50 @@ program
       });
     } catch (error: any) {
       console.error(chalk.red('❌ Discovery failed:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Deploy command
+program
+  .command('deploy <agent-file>')
+  .description('Deploy and run an agent from a TypeScript file')
+  .option('-w, --wallet <address>', 'Wallet address (overrides file default)')
+  .option('-p, --port <port>', 'Port to run on (overrides file default)')
+  .action(async (agentFile, options) => {
+    try {
+      const { spawn } = await import('child_process');
+      const path = await import('path');
+      
+      console.log(chalk.cyan(`🚀 Deploying agent from: ${agentFile}\n`));
+      
+      // Use tsx to run the TypeScript file
+      const args = [agentFile];
+      
+      // Set environment variables if provided
+      const env = { ...process.env };
+      if (options.wallet) env.WALLET_ADDRESS = options.wallet;
+      if (options.port) env.PORT = options.port;
+      
+      const child = spawn('npx', ['tsx', ...args], {
+        stdio: 'inherit',
+        env,
+        shell: true
+      });
+      
+      child.on('error', (error) => {
+        console.error(chalk.red('❌ Failed to deploy agent:'), error.message);
+        process.exit(1);
+      });
+      
+      child.on('exit', (code) => {
+        if (code !== 0) {
+          console.log(chalk.yellow(`\n⚠️  Agent stopped with code ${code}`));
+        }
+      });
+      
+    } catch (error: any) {
+      console.error(chalk.red('❌ Deployment failed:'), error.message);
       process.exit(1);
     }
   });

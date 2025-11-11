@@ -507,7 +507,7 @@ agent.start(3000);`}
               </div>
             </div>
             <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">
-              v0.1.0-alpha.1
+              v0.2.0
             </span>
           </div>
 
@@ -573,7 +573,7 @@ agent.start(3000);`}
               </div>
             </div>
             <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">
-              v0.1.0-alpha.1
+              v0.2.0
             </span>
           </div>
 

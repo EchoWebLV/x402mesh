@@ -1,6 +1,6 @@
-# 🌐 Agent-to-Agent Payment Router - Web UI
+# 🌐 x402mesh Web Interface
 
-Beautiful, modern web interface for the Agent-to-Agent Payment Router.
+Beautiful, modern web interface for x402mesh - the agent payment infrastructure on Solana.
 
 ## Features
 
@@ -32,7 +32,7 @@ npm run web
 
 ## Phantom Wallet Integration
 
-This UI integrates with Phantom wallet, making it eligible for the **"Best Use of CASH"** bounty ($10,000).
+x402mesh integrates seamlessly with Phantom wallet for secure Solana transactions.
 
 ### Features:
 - Connect/disconnect wallet with one click
@@ -73,9 +73,9 @@ npm run web:start
 
 (Add screenshots here after recording demo)
 
-## Contributing
+## About
 
-This is part of the Solana x402 Hackathon submission.
+x402mesh is the infrastructure platform for payment-enabled AI agents on Solana.
 
 ## License
 

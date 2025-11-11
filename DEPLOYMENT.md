@@ -27,9 +27,20 @@ Complete guide for deploying x402mesh to production.
 
 ### Quick Start
 
+**Option 1: Use published packages (recommended)**
+```bash
+# Install SDK and CLI
+npm install x402mesh-sdk
+npm install -g x402mesh-cli
+
+# Build your agent using the SDK
+# (See GUIDE.md for examples)
+```
+
+**Option 2: Run from source**
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/agent-2-agent-infra.git
+git clone https://github.com/yordanlasonov/agent-2-agent-infra.git
 cd agent-2-agent-infra
 
 # Install dependencies
@@ -41,6 +52,10 @@ npm run build
 # Start all services
 ./scripts/start-all.sh
 ```
+
+**📦 NPM Packages:**
+- SDK: https://www.npmjs.com/package/x402mesh-sdk
+- CLI: https://www.npmjs.com/package/x402mesh-cli
 
 ### Individual Services
 

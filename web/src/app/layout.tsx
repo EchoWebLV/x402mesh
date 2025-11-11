@@ -5,8 +5,8 @@ import Providers from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Agent-to-Agent Infrastructure',
-  description: 'Decentralized agent-to-agent payment infrastructure on Solana',
+  title: 'x402mesh - Agent Payment Infrastructure',
+  description: 'Decentralized payment infrastructure for AI agents on Solana. Build, discover, and chain payment-enabled agents with hybrid execution.',
 }
 
 export default function RootLayout({

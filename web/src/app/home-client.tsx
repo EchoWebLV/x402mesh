@@ -20,10 +20,10 @@ export default function HomeClient() {
               <Bot className="w-7 h-7 text-white" />
               <div>
                 <h1 className="text-xl font-semibold text-white">
-                  Agent Network
+                  x402mesh
                 </h1>
                 <p className="text-xs text-gray-500">
-                  x402 Protocol
+                  Agent Payment Infrastructure
                 </p>
               </div>
             </div>
@@ -38,10 +38,13 @@ export default function HomeClient() {
       <section className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto mb-12 text-center">
           <h2 className="text-3xl font-semibold text-white mb-4">
-            Discovery and Payment Infrastructure for x402 APIs
+            Build, Discover, and Chain Payment-Enabled AI Agents
           </h2>
           <p className="text-gray-500 leading-relaxed">
-            A registry and router for x402-enabled APIs on Solana. Register your API to make it discoverable, or find and chain existing APIs into workflows. When APIs are chained, payments automatically route to each service and settle on-chain.
+            <strong className="text-white">x402mesh</strong> is the infrastructure for the agent economy. 
+            Register your agents to make them discoverable, or find and chain existing agents into workflows. 
+            Featuring hybrid chain execution with auto-chaining and template variables. 
+            Payments automatically route to each agent and settle on Solana.
           </p>
         </div>
 
@@ -94,17 +97,20 @@ export default function HomeClient() {
       <footer className="border-t border-gray-900 bg-black mt-16">
         <div className="container mx-auto px-4 py-6">
           <div className="text-center text-sm text-gray-600">
+            <div className="mb-2">
+              <span className="text-white font-semibold">x402mesh</span> - Agent Payment Infrastructure
+            </div>
             <div className="flex gap-4 justify-center">
-              <a href="https://github.com" className="hover:text-white transition-colors">
+              <a href="https://github.com/yordanlasonov/agent-2-agent-infra" className="hover:text-white transition-colors">
                 GitHub
               </a>
               <span>·</span>
-              <a href="https://docs.solana.com" className="hover:text-white transition-colors">
-                Docs
+              <a href="https://www.npmjs.com/package/x402mesh-sdk" className="hover:text-white transition-colors">
+                npm
               </a>
               <span>·</span>
               <a href="https://explorer.solana.com/?cluster=devnet" className="hover:text-white transition-colors">
-                Explorer
+                Solana Explorer
               </a>
             </div>
           </div>

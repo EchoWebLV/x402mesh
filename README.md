@@ -53,8 +53,18 @@ This makes agents truly composable in a decentralized marketplace.
 
 ### Installation
 
+**Install from npm:**
 ```bash
-git clone https://github.com/yourusername/agent-2-agent-infra.git
+# Install SDK
+npm install x402mesh-sdk
+
+# Install CLI globally
+npm install -g x402mesh-cli
+```
+
+**Or clone from source:**
+```bash
+git clone https://github.com/yordanlasonov/agent-2-agent-infra.git
 cd agent-2-agent-infra
 npm install && npm run build
 ```
@@ -469,10 +479,11 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ## Links
 
-- **GitHub:** https://github.com/yourusername/agent-2-agent-infra
-- **NPM:** `npm install x402mesh-sdk`
+- **GitHub:** https://github.com/yordanlasonov/agent-2-agent-infra
+- **NPM SDK:** https://www.npmjs.com/package/x402mesh-sdk
+- **NPM CLI:** https://www.npmjs.com/package/x402mesh-cli
 - **Documentation:** [GUIDE.md](./GUIDE.md)
-- **Issues:** https://github.com/yourusername/agent-2-agent-infra/issues
+- **Issues:** https://github.com/yordanlasonov/agent-2-agent-infra/issues
 
 ---
 

@@ -21,9 +21,19 @@ Complete guide to building payment-enabled AI agents with x402mesh.
 
 ### Installation
 
+**Install SDK:**
 ```bash
 npm install x402mesh-sdk
 ```
+
+**📦 NPM Package:** https://www.npmjs.com/package/x402mesh-sdk
+
+**Install CLI (optional):**
+```bash
+npm install -g x402mesh-cli
+```
+
+**📦 NPM Package:** https://www.npmjs.com/package/x402mesh-cli
 
 ### Environment Setup
 
