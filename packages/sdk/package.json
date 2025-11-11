@@ -1,7 +1,7 @@
 {
   "name": "x402mesh-sdk",
-  "version": "0.1.0-alpha.1",
-  "description": "SDK for building AI agents with payment capabilities on Solana using x402 protocol",
+  "version": "0.2.0",
+  "description": "SDK for building AI agents with payment capabilities on Solana - featuring hybrid chain execution",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

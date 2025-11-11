@@ -102,7 +102,7 @@ export function ChainBuilder() {
       throw new Error('Missing agents needed to complete this chain');
     }
 
-    const totalCost = selectedAgents.reduce((sum: number, s) => {
+    const totalCost = selectedAgents.reduce((sum: number, s: any) => {
       const cap = s.agent.capabilities.find((c: any) => c.name === s.capability)
       return sum + (cap?.pricing.amount || 0)
     }, 0)

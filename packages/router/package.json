@@ -1,6 +1,6 @@
 {
   "name": "@x402mesh/router",
-  "version": "0.1.0-alpha.1",
+  "version": "0.2.0",
   "description": "Payment Router Service with x402 support",
   "type": "module",
   "main": "./dist/index.js",
