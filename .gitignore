@@ -38,3 +38,11 @@ HACKATHON_TODO.md
 HACKATHON_NOTES.md
 WORKING_NOTES.md
 SCRATCH.md
+
+# Environment backups (should NEVER be committed!)
+*.env.bak
+*.env.backup
+.env*.backup
+.env*.bak
+*.env.local
+*.env.local.*
