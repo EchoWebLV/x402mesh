@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_REGISTRY_URL": "http://localhost:3001",
+    "NEXT_PUBLIC_ROUTER_URL": "http://localhost:3002"
+  }
+}
+

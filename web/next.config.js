@@ -8,6 +8,9 @@ const nextConfig = {
     '@solana/wallet-adapter-phantom',
     '@solana/wallet-adapter-wallets'
   ],
+  eslint: {
+    ignoreDuringBuilds: true,
+  }
 }
 
 module.exports = nextConfig

@@ -63,10 +63,10 @@ CRITICAL RULES:
 7. Chain agents so output flows from one to next
 8. Be brutally honest - users need to know limitations`;
 
-    // Use GPT-5-mini with medium reasoning to properly analyze requirements
-    const response = await openai.responses.create({
-      model: 'gpt-5-mini',
-      input: [
+    // Use OpenAI to generate chain
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
         {
           role: 'system',
           content: systemPrompt,
@@ -76,14 +76,11 @@ CRITICAL RULES:
           content: prompt,
         },
       ],
-      reasoning: { effort: 'medium' },
-      text: { 
-        verbosity: 'low',
-        format: { type: 'json_object' }
-      },
+      temperature: 0.3,
+      response_format: { type: 'json_object' }
     });
 
-    const result = JSON.parse(response.output_text);
+    const result = JSON.parse(response.choices[0].message.content || '{}');
 
     // Check if AI says agents are missing
     if (result.error === 'missing_agents') {

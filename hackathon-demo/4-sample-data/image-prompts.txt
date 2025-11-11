@@ -1,0 +1,53 @@
+Image Generation Prompts for Demo:
+
+Perfect for 3-minute demo (fast generation):
+
+1. "fantasy orc warrior, muscular, detailed armor, battle-ready, realistic style"
+
+2. "cyberpunk street scene at night, neon lights, rain, futuristic, detailed"
+
+3. "ancient dragon perched on mountain peak, scales glistening, dramatic clouds"
+
+4. "steampunk inventor in workshop, gears and machinery, Victorian era aesthetic"
+
+5. "magical forest with glowing mushrooms, ethereal lighting, fantasy art"
+
+---
+
+Character Prompts (good for background removal):
+
+6. "medieval knight in full plate armor, standing pose, detailed metalwork"
+
+7. "futuristic robot with sleek design, metallic surfaces, modern aesthetic"
+
+8. "wizard casting spell, magical energy, flowing robes, dramatic pose"
+
+9. "space explorer in advanced suit, helmet reflections, sci-fi design"
+
+10. "samurai warrior in traditional armor, katana drawn, detailed textures"
+
+---
+
+Scene Prompts (for variety):
+
+11. "alien planet landscape, two moons, exotic vegetation, otherworldly colors"
+
+12. "underwater city with dome structures, bioluminescent creatures, mysterious"
+
+13. "post-apocalyptic ruins overgrown with nature, sunset lighting, dramatic"
+
+14. "crystal cave with light refraction, gemstones, magical atmosphere"
+
+15. "floating islands in the sky, waterfalls, clouds, fantasy world"
+
+---
+
+Demo Recommendation:
+
+Use prompt #1 or #6 for the demo - they:
+- Generate quickly
+- Look impressive
+- Work well with background removal
+- Are family-friendly
+- Show clear results
+

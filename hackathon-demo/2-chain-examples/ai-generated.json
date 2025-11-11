@@ -1,0 +1,39 @@
+{
+  "name": "AI-Generated Chain Example",
+  "description": "Output from GPT-4o chain builder",
+  "user_prompt": "Translate a customer review to Spanish and analyze its sentiment",
+  "ai_reasoning": [
+    "User needs translation first",
+    "Then sentiment analysis",
+    "Translator outputs text in Spanish",
+    "Analyzer needs to receive that Spanish text",
+    "Use auto-chaining since both use compatible schemas"
+  ],
+  "generated_chain": [
+    {
+      "agentId": "translator-agent",
+      "capability": "translate",
+      "input": {
+        "text": "This product is absolutely amazing! I love everything about it.",
+        "targetLanguage": "es"
+      },
+      "reasoning": "First translate the review to Spanish"
+    },
+    {
+      "agentId": "analyzer-agent",
+      "capability": "analyze_sentiment",
+      "input": {
+        "text": "{{step0.text}}"
+      },
+      "reasoning": "Analyze sentiment of the Spanish translation"
+    }
+  ],
+  "generated_code": "import { PaymentClient } from 'x402mesh-sdk';\n\nconst client = new PaymentClient();\n\nconst result = await client.executeChain({\n  paymentSource: 'your-wallet-address',\n  chain: [\n    {\n      agentId: 'translator-agent',\n      capability: 'translate',\n      input: {\n        text: 'This product is absolutely amazing! I love everything about it.',\n        targetLanguage: 'es'\n      }\n    },\n    {\n      agentId: 'analyzer-agent',\n      capability: 'analyze_sentiment',\n      input: {\n        text: '{{step0.text}}'\n      }\n    }\n  ]\n});\n\nconsole.log('Result:', result);",
+  "notes": [
+    "This is what the AI chain builder outputs",
+    "Includes reasoning for each step",
+    "Generates production-ready TypeScript code",
+    "Copy-paste ready"
+  ]
+}
+

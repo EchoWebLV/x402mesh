@@ -1,0 +1,30 @@
+{
+  "name": "Multi-Modal Chain (Image Processing)",
+  "description": "Generate an image, then remove its background",
+  "chain": [
+    {
+      "agentId": "image-generator-agent",
+      "capability": "generate_image",
+      "input": {
+        "prompt": "fantasy orc warrior, muscular, detailed armor, battle-ready",
+        "style": "realistic"
+      }
+    },
+    {
+      "agentId": "background-remover-agent",
+      "capability": "remove_background"
+    }
+  ],
+  "notes": [
+    "Demonstrates TEXT → IMAGE → IMAGE flow",
+    "Both agents use image_processing_v1 schema",
+    "Auto-chains seamlessly",
+    "Final result: Orc warrior with transparent background"
+  ],
+  "expected_behavior": {
+    "step1": "Generates orc warrior image (base64)",
+    "step2": "Auto-chains - receives image and removes background"
+  },
+  "demo_tip": "Perfect for showing multi-modal capabilities!"
+}
+

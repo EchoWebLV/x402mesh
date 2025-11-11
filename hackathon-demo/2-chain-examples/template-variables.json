@@ -1,0 +1,37 @@
+{
+  "name": "Template Variables Example",
+  "description": "Use {{step0.field}} to extract specific fields",
+  "chain": [
+    {
+      "agentId": "translator-agent",
+      "capability": "translate",
+      "input": {
+        "text": "I absolutely love this product! It exceeded all my expectations and I'm extremely satisfied!",
+        "targetLanguage": "es"
+      }
+    },
+    {
+      "agentId": "analyzer-agent",
+      "capability": "analyze_sentiment",
+      "input": {
+        "text": "{{step0.text}}"
+      }
+    }
+  ],
+  "notes": [
+    "Step 2 uses template variable: {{step0.text}}",
+    "Extracts the 'text' field from step 0's output",
+    "Schemas are different: text_processing_v1 → analysis_v1",
+    "Template provides precise field mapping"
+  ],
+  "expected_behavior": {
+    "step1": "Translates English to Spanish",
+    "step2": "Analyzes sentiment of the Spanish translation"
+  },
+  "template_explanation": {
+    "step0.text": "Gets 'text' field from first step's output",
+    "step0.language": "Would get 'language' field",
+    "step0.metadata.originalText": "Can access nested fields too"
+  }
+}
+
